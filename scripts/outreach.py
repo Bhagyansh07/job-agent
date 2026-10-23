@@ -6,7 +6,7 @@ python scripts/outreach.py count            -> connection requests sent today + 
 python scripts/outreach.py due              -> who needs a DM now (accepted, no DM yet) and who needs a follow-up
 python scripts/outreach.py exists --url U
 """
-import argparse, csv, sys, datetime as dt
+import argparse, csv, os, sys, datetime as dt
 from common import ROOT, today, cfg, FileLock, safe_cell
 
 F = ROOT / "tracker" / "outreach.csv"
@@ -56,8 +56,13 @@ def main():
         if any(r["url"] == args.url for r in rs):
             print("ALREADY")
             return
+        status = args.status or "requested"
+        if os.environ.get("DRY_RUN", "0").strip().lower() in ("1", "true", "yes") \
+                and status in ("requested", "dm_sent", "followup_sent"):
+            status = "draft_ready"
+            print("DRY_RUN forced draft_ready (nothing was sent)")
         rs.append({"date": today(), "name": args.name, "title": args.title, "company": args.company, "url": args.url,
-                   "type": args.type, "status": args.status or "requested", "status_date": today(), "dm_date": "", "notes": args.notes})
+                   "type": args.type, "status": status, "status_date": today(), "dm_date": "", "notes": args.notes})
         save(rs)
         print("logged")
     elif args.cmd == "update":

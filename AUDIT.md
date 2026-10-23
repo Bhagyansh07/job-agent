@@ -124,3 +124,42 @@ python scripts\recruiter_sheet.py stats
 python scripts\outreach.py count
 python scripts\tracker.py check --portal naukri --chat chat1
 ```
+
+## 9. Re-audit round 2 (same day, after the fixes above)
+
+### New findings and fixes
+
+| # | Severity | Finding | Fix | Proof |
+|---|---|---|---|---|
+| 1 | HIGH | `watcher.py` had **no location filter**. First live run queued 121 jobs including MongoDB AMER, Dublin, Cloudflare US, Stripe Poland | added `FOREIGN` region blocklist + allowed-location list | 121 -> 12, zero foreign rows |
+| 2 | HIGH | Greenhouse reports many jobs as `Hybrid`; the real city was hidden inside `metadata["Job Posting Location"]`, so a US job could look location-less and pass | watcher now reads that metadata | Cloudflare `Hybrid` -> `Bengaluru, India` |
+| 3 | MEDIUM | watcher queued the same company + role many times (4x MongoDB SDE 3) | dedupe on (company, lower title) per run | 4 -> 1 |
+| 4 | MEDIUM | `recruiter_sheet.py` domain cap only counted the current batch, so a second contact at an already-queued company slipped through | existing queued/draft/sent domains now count | GreyOrange retest: `queued=0` |
+| 5 | MEDIUM | `google_auth.py --send` crashed with a raw traceback when credentials were missing | clean `REAUTH_NEEDED` + exit 2 | verified |
+| 6 | MEDIUM | `safe_cell` ran on the cold-email `subject`; a subject starting with `-` would gain an apostrophe and be sent that way | escape only display-only fields | round-trip test: subject unchanged |
+| 7 | HIGH | the DRY_RUN guard for LinkedIn outreach lived only in AGENTS.md, not in code | `outreach.py add` now forces `draft_ready` for outbound statuses when DRY_RUN=1 | verified |
+| 8 | HIGH | `config/watchlist.yaml` was empty, so the career-page watcher ran and did nothing | seeded 14 ATS boards that were probed live | watcher: 12 matching India/remote jobs |
+| 9 | MEDIUM | `answers.yaml` had github/linkedin empty even though profile.yaml has them (forms would ask on Telegram) | filled | verified |
+| 10 | HIGH | nothing started the agent after a reboot, so "24x7" was not true | `start_all.ps1`, `stop_all.ps1`, `register_startup.ps1` + Startup-folder VBS | launched and stopped 3 loops, task survives reboot |
+| 11 | INFO | permission layer needed proof, not faith | canary test: model asked to read `browser-profiles/.gitkeep` got `Permission denied: read` | denied |
+| 12 | INFO | `state/RUN_LOG.md` empty: the agent has never completed a live cycle | expected; first cycle is pending keys/resume | - |
+
+### Current live state
+
+- `state/PAUSE` exists on purpose. Loops start with Windows (hidden) but stay idle until it is deleted.
+- Cold email queue: 1 real draft (GreyOrange) in `draft_ready`, nothing sent.
+- Outreach tracker: 2 draft rows from the LinkedIn test, 0 requests sent today.
+- Career-page queue: 12 fresh India/remote jobs.
+- Model quota: average ~100 req/hour with 900s cycles, under the 200/hour cap.
+
+### Still blocked on you
+
+| Need | Why |
+|---|---|
+| Apollo API key | people search + verified emails |
+| Gmail send OAuth (`google_auth.py --send`) | actually sending cold email |
+| Resume PDF | portal profile setup on all 11 portals |
+| CGPA: 9.25 or 9.27 | three files disagree by 0.02 |
+| Portfolio URL | empty in profile + answers |
+| Email templates | locked until you send your own |
+

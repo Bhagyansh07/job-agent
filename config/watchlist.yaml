@@ -1,7 +1,24 @@
 # Companies whose career pages are watched every 30 min by scripts/watcher.py.
 # Supported ATS (public JSON APIs): greenhouse, lever, ashby
-# The agent (chat3 discovery step) will ADD companies here as it finds them.
 # token = the company slug in the ATS URL:
 #   greenhouse: boards.greenhouse.io/<token>     lever: jobs.lever.co/<token>     ashby: jobs.ashbyhq.com/<token>
-companies: []
-#  - {name: Example, ats: greenhouse, token: example}
+#
+# Every entry below was probed live on 2026-10-23 and returned jobs.
+# India-heavy boards first, then global-remote boards that hire in India.
+companies:
+  # ---- India ----
+  - {name: Paytm, ats: lever, token: paytm}
+  - {name: Tekion, ats: ashby, token: tekion}
+  - {name: Meesho, ats: lever, token: meesho}
+  - {name: Groww, ats: greenhouse, token: groww}
+  - {name: CRED, ats: lever, token: cred}
+  - {name: Atlan, ats: ashby, token: atlan}
+  - {name: Navi, ats: ashby, token: navi}
+  - {name: MongoDB, ats: greenhouse, token: mongodb}
+  - {name: Cloudflare, ats: greenhouse, token: cloudflare}
+  - {name: Stripe, ats: greenhouse, token: stripe}
+  - {name: Datadog, ats: greenhouse, token: datadog}
+  # ---- global remote (hire in India) ----
+  - {name: GitLab, ats: greenhouse, token: gitlab}
+  - {name: Elastic, ats: greenhouse, token: elastic}
+  - {name: Supabase, ats: ashby, token: supabase}

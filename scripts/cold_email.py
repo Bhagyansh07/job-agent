@@ -51,6 +51,7 @@ CFG = ROOT / "config" / "cold_email.yaml"
 DRAFTS = ROOT / "tracker" / "email_drafts"
 COLS = ["id", "queued_date", "company", "contact_name", "contact_title", "email", "source", "notes",
         "status", "subject", "sent_at", "last_sent_at", "apollo_id", "linkedin"]
+SAFE_FIELDS = {"company", "contact_name", "contact_title", "notes"}
 STATUSES = {"queued", "draft_ready", "sent", "replied", "failed", "skipped"}
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
 
@@ -119,7 +120,9 @@ def save_unlocked(rs: list[dict[str, str]]) -> None:
         w = csv.DictWriter(fh, fieldnames=COLS)
         w.writeheader()
         for r in rs:
-            w.writerow({c: safe_cell(r.get(c, "")) for c in COLS})
+            # only display-only fields are escaped; email/subject are reused verbatim when sending
+            w.writerow({c: (safe_cell(r.get(c, "")) if c in SAFE_FIELDS else (r.get(c, "") or ""))
+                        for c in COLS})
     os.replace(tmp, F)
 
 

@@ -64,9 +64,13 @@ def service(name, version, interactive=True):
 
 if __name__ == "__main__":
     import sys
-    if "--send" in sys.argv:
-        creds_send(interactive=True)
-        print("Gmail send auth OK")
-    else:
-        creds(interactive=True)
-        print("Google auth OK")
+    try:
+        if "--send" in sys.argv:
+            creds_send(interactive=True)
+            print("Gmail send auth OK")
+        else:
+            creds(interactive=True)
+            print("Google auth OK")
+    except RuntimeError as e:
+        print(str(e))
+        sys.exit(2)

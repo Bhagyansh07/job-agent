@@ -6,6 +6,33 @@ from common import ROOT, cfg
 SEEN = ROOT / "state" / "seen_jobs.json"
 QUEUE = ROOT / "queue" / "new_jobs.jsonl"
 
+# Jobs that name a non-India region are dropped at discovery time. The agent then
+# never wastes a cycle opening a US/EU posting. Bare "remote" without a country stays.
+FOREIGN = re.compile(
+    r"\b(united states|u\.s\.a?|usa|amer|canada|emea|europe|european union|united kingdom|uk|"
+    r"london|dublin|berlin|munich|amsterdam|paris|madrid|barcelona|singapore|australia|sydney|"
+    r"japan|tokyo|korea|seoul|toronto|vancouver|new york|austin|seattle|san francisco|palo alto|"
+    r"chicago|boston|los angeles|denver|atlanta|dallas|washington|poland|warsaw|germany|france|"
+    r"spain|netherlands|ireland|sweden|switzerland|portugal|romania|czech|hungary|turkey|brazil|"
+    r"mexico|argentina|south africa|uae|dubai|saudi|qatar|israel|taiwan|hong kong|china|malaysia|"
+    r"indonesia|philippines|vietnam|thailand|new zealand|remote\s*[-–]\s*us|remote\s*us)\b",
+    re.I)
+
+
+def loc_ok(loc: str, p: dict) -> bool:
+    if not loc:
+        return True
+    if re.search(r"\b(US|USA|U\.S\.)\b", loc):      # uppercase country code, "join us" stays safe
+        return False
+    if FOREIGN.search(loc):
+        return False
+    allowed = []
+    for bucket in ("tier1", "tier2", "other_requires_double_digit_ctc"):
+        allowed += [str(x).lower() for x in p["locations"].get(bucket, [])]
+    allowed += ["india", "remote", "hybrid", "onsite", "work from home", "wfh"]
+    low = loc.lower()
+    return any(k in low for k in allowed)
+
 
 def get(url):
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -33,7 +60,16 @@ def jobs_for(c):
     out = []
     if ats == "greenhouse":
         for j in get(f"https://boards-api.greenhouse.io/v1/boards/{tok}/jobs").get("jobs", []):
-            out.append((j.get("title", ""), (j.get("location") or {}).get("name", ""), j.get("absolute_url", ""), j.get("updated_at")))
+            loc = (j.get("location") or {}).get("name", "")
+            if str(loc).strip().lower() in ("", "hybrid", "remote"):
+                for m in j.get("metadata") or []:
+                    if str(m.get("name", "")).strip().lower() == "job posting location":
+                        v = m.get("value")
+                        if isinstance(v, list) and v:
+                            loc = "; ".join(str(x) for x in v)
+                        elif v:
+                            loc = str(v)
+            out.append((j.get("title", ""), loc, j.get("absolute_url", ""), j.get("updated_at")))
     elif ats == "lever":
         for j in get(f"https://api.lever.co/v0/postings/{tok}?mode=json"):
             out.append((j.get("text", ""), (j.get("categories") or {}).get("location", ""), j.get("hostedUrl", ""), j.get("createdAt")))
@@ -51,6 +87,7 @@ def main():
     wl = cfg("watchlist.yaml").get("companies") or []
     seen_list = json.loads(SEEN.read_text()) if SEEN.exists() else []   # keep insertion order
     seen = set(seen_list)
+    emitted = set()
     new = 0
     QUEUE.parent.mkdir(exist_ok=True)
     for c in wl:
@@ -64,6 +101,12 @@ def main():
                 tl = title.lower()
                 if not any(i in tl for i in inc) or any(x in tl for x in exc):
                     continue
+                if not loc_ok(loc, p):
+                    continue
+                ck = (c["name"].lower(), tl)
+                if ck in emitted:          # rule 11: same company + same role once
+                    continue
+                emitted.add(ck)
                 a = age_days(posted)
                 if a is not None and a > max_age:
                     continue

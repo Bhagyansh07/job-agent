@@ -198,6 +198,11 @@ def cmd_queue(a) -> int:
         existing = rows_unlocked()
         known = {r["email"].lower() for r in existing
                  if r["status"] in ("queued", "draft_ready", "sent", "replied")}
+        # company domains already in play count toward --max-per-domain
+        for r in existing:
+            if r["status"] in ("queued", "draft_ready", "sent", "replied") and "@" in r["email"]:
+                d = r["email"].split("@")[-1].lower()
+                per_domain[d] = per_domain.get(d, 0) + 1
         for r in rows:
             if added >= a.limit:
                 break
