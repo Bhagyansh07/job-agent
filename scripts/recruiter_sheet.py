@@ -179,6 +179,11 @@ def cmd_queue(a) -> int:
     from cold_email import FileLock, LOCK, add_row, rows_unlocked, save_unlocked
 
     rows = clean(load())
+    if a.company:
+        needle = a.company.lower()
+        rows = [r for r in rows if needle in r["company"].lower()]
+    if a.domain:
+        rows = [r for r in rows if r["domain"] == a.domain.lower()]
     if a.roles:
         wanted = [w.strip().lower() for w in a.roles.split(",") if w.strip()]
         rows = [r for r in rows if any(w in r["title"].lower() for w in wanted)]
@@ -236,6 +241,8 @@ def main() -> int:
     q.add_argument("--limit", type=int, default=25)
     q.add_argument("--max-per-domain", type=int, default=1)
     q.add_argument("--roles", default="", help="comma list, e.g. talent,recruit,people,hr")
+    q.add_argument("--company", default="", help="only this company (substring)")
+    q.add_argument("--domain", default="", help="only this email domain")
     q.add_argument("--min-score", type=int, default=None)
     q.add_argument("--verify", action="store_true", help="skip domains without MX")
     a = ap.parse_args()
