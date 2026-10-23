@@ -143,6 +143,7 @@ python scripts\tracker.py check --portal naukri --chat chat1
 | 10 | HIGH | nothing started the agent after a reboot, so "24x7" was not true | `start_all.ps1`, `stop_all.ps1`, `register_startup.ps1` + Startup-folder VBS | launched and stopped 3 loops, task survives reboot |
 | 11 | INFO | permission layer needed proof, not faith | canary test: model asked to read `browser-profiles/.gitkeep` got `Permission denied: read` | denied |
 | 12 | INFO | `state/RUN_LOG.md` empty: the agent has never completed a live cycle | expected; first cycle is pending keys/resume | - |
+| 13 | MEDIUM | after round 1, a bare `"429"` marker still matched job IDs and salaries, so a successful cycle could be logged as a rate-limit failure | context regex (`status/code/error/http ... 429`, or `429 ... too many/rate limit`) | 4 unit cases pass |
 
 ### Current live state
 

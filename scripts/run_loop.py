@@ -4,7 +4,7 @@
   python scripts/run_loop.py chat3
 Each loop starts a fresh `opencode run` work cycle (state lives in files, so nothing is lost between cycles).
 PAUSE switch: put a file state/PAUSE (all chats) or state/PAUSE_chat1 (one chat) and the loop waits."""
-import datetime as dt, os, shutil, subprocess, sys, time
+import datetime as dt, os, re, shutil, subprocess, sys, time
 from zoneinfo import ZoneInfo
 from common import ROOT
 
@@ -18,19 +18,20 @@ pauses = [ROOT / "state" / "PAUSE", ROOT / "state" / f"PAUSE_{chat}"]
 log_dir = ROOT / "state" / "logs"
 pw = f"pw_{chat}"
 
-RATE_MARKERS = ("429", "too many requests", "rate limit", "ratelimit", "freeusagelimiterror",
+RATE_MARKERS = ("too many requests", "rate limit", "ratelimit", "freeusagelimiterror",
                 "sign up for free to continue", "quota exceeded", "insufficient credits",
                 "no available model", "model not found", "overloaded")
+# bare "429" is a job id as often as it is an HTTP status, so require context
+RATE_RE = re.compile(r"(?:status|code|error|http)[^\n]{0,16}\b429\b|\b429\b[^\n]{0,16}(?:too many|rate limit)")
 
 
 def looks_failed(rc: int, content: str) -> bool:
-    low = content.lower()
-    return rc != 0 or any(m in low for m in RATE_MARKERS)
+    return rc != 0 or rate_limited(content)
 
 
 def rate_limited(content: str) -> bool:
     low = content.lower()
-    return any(m in low for m in RATE_MARKERS)
+    return bool(RATE_RE.search(low)) or any(m in low for m in RATE_MARKERS)
 
 
 def clean_old_logs():
