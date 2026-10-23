@@ -18,7 +18,8 @@ har portal ke baad Telegram pe audit report dete hain, recruiter mails/messages 
    OAuth client (Desktop app) -> `credentials.json` download -> `secrets/credentials.json`.
    Naya Google Sheet banao, pehle tab ka naam `Applications` rakho, URL se Sheet ID `.env` me GOOGLE_SHEET_ID.
    Phir: `python scripts/google_auth.py` (browser me allow karo) aur `python scripts/tracker.py init-sheet`.
-   (Gmail sirf READ-ONLY permission leta hai. Agent kabhi browser nahi kholta auth ke liye - token missing ho to
+   (Gmail read-only grant OTP/mail padhne ke liye hai. Cold email bhejne ke liye alag `python scripts/google_auth.py --send`
+   chalao jo `secrets/token_send.json` banata hai, taaki read-only grant chalta rahe. Token missing ho to
    sheet sync skip ho jayega aur woh message console/log me dikhega.)
 6. Apna resume PDF `resume/` me daalo.
 7. `config/profile.yaml` me email/phone/links bharo. Criteria wahin se badal sakte ho.
@@ -35,11 +36,19 @@ python scripts/run_loop.py chat3     # Career pages/ATS, YC, remote boards, Unst
 Har loop naya `opencode run` cycle chalata hai, state files me rehti hai. Laptop sleep na ho (power settings: never sleep),
 charger laga rehne do.
 
+Logon pe khud start karne ke liye:
+```
+powershell -ExecutionPolicy Bypass -File .\register_startup.ps1   # once
+powershell -ExecutionPolicy Bypass -File .\start_all.ps1           # abhi start
+powershell -ExecutionPolicy Bypass -File .\stop_all.ps1            # sab band (child processes bhi)
+```
+
 ## Control switches (state/ folder)
 - **Pause**: `state/PAUSE` file banao -> teeno chats ruk jayenge (300s me check karte hain, file hatao to chalu).
   Sirf ek chat rokni ho to `state/PAUSE_chat1` (ya chat2/chat3) banao.
 - **DRY_RUN**: `.env` me `DRY_RUN=1` -> agent final Submit kabhi nahi dabayega; decision `dry_` prefixed status se
-  log hoga aur dry_ rows daily limits me count nahi hote. Sheet sync bhi skip hota hai. Normal chalane ke liye `DRY_RUN=0`.
+  log hoga aur dry_ rows daily limits me count nahi hote. Sheet sync bhi skip hota hai. Outreach draft_ready pe rukta hai,
+  cold email `draft` mode me rehta hai. Normal chalane ke liye `DRY_RUN=0`.
 - **Per-chat daily budgets** (config/profile.yaml `limits.per_chat`): chat1 = 30, chat2 = 25, chat3 = 45 applications/day.
   Iske alawa per-portal caps aur global 100/day cap bhi lagti hai.
 - **Cycle logs**: har cycle ka full opencode output `state/logs/<chat>_YYYYMMDD_HHMM.log` me jata hai (console pe last 30 lines).
@@ -58,19 +67,24 @@ charger laga rehne do.
 - **Daily summary**: `scripts/daily_report.py` aaj ki counts (status + portal wise), average match aur total rows ka chhota Telegram message banata hai; `GOOGLE_SHEET_ID` set ho to Sheet ka link bhi jodta hai. `run_loop.py` ise din me ek baar chalata hai (guard file `state/.daily_report_date`). Test ke liye `python scripts/daily_report.py --dry` (sirf print, send nahi).
 - **Writing style**: `skills/writing_style.md` - cover letter, "why us", founder note aur LinkedIn DM ke liye anti-AI style guide (no em/en dash, banned words, length limits, pre-submit checklist). HARD RULE 20 isko follow karne ko kehta hai.
 - **Outreach mode**: `config/profile.yaml` me `outreach.mode` = `auto` (abhi) ya `draft`. `auto` me connection requests/DMs direct jaate hain (caps ke andar); `draft` me messages `tracker/outreach.csv` me `draft_ready` status se likhe jaate hain aur pehle ek numbered approval message jaata hai.
+- **Cold email**: `scripts/cold_email.py` + `config/cold_email.yaml`. Default `mode: draft` (kuch bhi send nahi hota). Apollo se named contacts, Hunter fallback, `never_email` generic inboxes block, one contact per domain, warm-up 5 -> 15 -> 25/day, 4h gap, `DRY_RUN=1` par send held.
+- **Recruiter sheet**: `scripts/recruiter_sheet.py fetch/stats/verify/queue` public sheet se contacts laata hai, MX check karta hai, per-domain cap lagata hai; RAW data `state/import/` me gitignored rehta hai.
+- **New account password**: `python scripts/portal_account.py new --portal <name> --email <email>` sirf naye career-page account ke liye; password `secrets/portal_accounts.csv` me store hota hai aur ek baar print hota hai.
 - **Remote/WFH**: remote ya WFH job kabhi sirf location ki wajah se skip nahi hota (HARD RULE 18). Bond/service agreement 12 months tak theek hai (HARD RULE 19).
 
 ## Important
-- Naukri/LinkedIn/Indeed/Instahyre ki ToS automation allow nahi karti: ban ka risk hai. Isliye caps (10/day), raat me band (08:00-23:30),
+- Naukri/LinkedIn/Indeed/Instahyre ki ToS automation allow nahi karti: ban ka risk hai. Isliye per-portal caps (mostly 10/day), raat me band (08:00-23:30),
   human delays rakhe hain. Main account ka backup/alternate account mat bhoolna; warning dikhe to agent us portal ko rok dega.
 - Resume tailoring ke guard se agent koi skill/number add nahi kar sakta jo master.json me nahi hai.
-- `opencode.json` me permissions "allow" hain taaki unattended chale. Agar tumhara OpenCode version schema error de to `permission` block
-  ko docs ke hisab se adjust karo.
+- `opencode.json` me V2 `permissions` array hai (unattended chalne ke liye allow, phir `.env`/`secrets/`/`browser-profiles/`
+  par read/edit/shell deny, aur `grep` poora block taaki secrets search na ho sake). Ye best-effort guard hai, sandbox nahi;
+  residual risk `AUDIT.md` me likha hai.
 - Playwright MCP pehli baar `npx` se download hota hai; Chrome windows visible rehti hain (login/CAPTCHA ke liye).
 - `config/watchlist.yaml` me companies agent khud add karta hai (greenhouse/lever/ashby).
-- Files: tracker/applications.csv (+Sheet), tracker/outreach.csv, output/resumes/*.pdf, queue/, state/.
+- Files: tracker/applications.csv (+Sheet), tracker/outreach.csv, tracker/cold_emails.csv, output/resumes/*.pdf, queue/, state/.
 - Secrets (.env, secrets/, browser-profiles/) kisi ko mat bhejna, zip share mat karna.
 
 ## Folder map
 AGENTS.md (rules) | chats/ (3 chat playbooks + first run) | skills/ (matching, apply flow, tailoring, writing_style, outreach, portals/*) |
-scripts/ (tracker, telegram, gmail, resume PDF, watcher, runner, daily_report) | config/ (profile, answers, watchlist)
+scripts/ (tracker, telegram, gmail, resume PDF, watcher, runner, daily_report, cold_email, recruiter_sheet, portal_account) |
+config/ (profile, answers, watchlist, cold_email)

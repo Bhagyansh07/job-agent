@@ -4,6 +4,8 @@ Daily budget: connection requests 10-15 (`outreach.py count`), DMs only to ACCEP
 ## Mode (auto or draft)
 Mode comes from profile.yaml `outreach.mode`. Bhagyansh chose `auto` on 2026-10-17, so send connection requests and DMs directly, within the caps (10-15 connection requests/day, max 2 outreach actions per cycle), and stop the whole outreach for the day on any warning/CAPTCHA/restriction. If outreach.mode is `draft`, then instead write each message into tracker/outreach.csv with status draft_ready and its text in notes, and send one numbered approval message first.
 
+`DRY_RUN=1` beats the mode: send nothing, and `outreach.py update` refuses to mark `requested`/`dm_sent`/`followup_sent` (exit 5, `DRY_RUN_BLOCKED`). Drafts stay `draft_ready`.
+
 Targets (in this priority): 1) engineers/EMs at companies where he just applied (match >= 80), 2) recruiters/HR of those companies, 3) JECRC alumni at product companies, 4) founders/CTOs of hiring startups.
 Flow:
 1. Read `state/referral_queue.txt` (company | role | job url). For each company search LinkedIn People: "<company> software engineer", "<company> talent acquisition", "<company> JECRC". Prefer people with the company's current role, active profiles, 2nd/3rd degree.

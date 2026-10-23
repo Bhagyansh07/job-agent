@@ -84,8 +84,15 @@ def main():
     inc = [x.lower() for x in p["roles_include"]]
     exc = [x.lower() for x in p["roles_exclude_title"]]
     max_age = p["posting_age"]["stretch_max"]
-    wl = cfg("watchlist.yaml").get("companies") or []
-    seen_list = json.loads(SEEN.read_text()) if SEEN.exists() else []   # keep insertion order
+    try:
+        wl = cfg("watchlist.yaml").get("companies") or []
+    except Exception as e:
+        print(f"watcher: bad config/watchlist.yaml: {e}")
+        return
+    try:
+        seen_list = json.loads(SEEN.read_text(encoding="utf-8")) if SEEN.exists() else []
+    except Exception:
+        seen_list = []
     seen = set(seen_list)
     emitted = set()
     new = 0
@@ -118,7 +125,9 @@ def main():
             print(f"watcher: {c.get('name')} failed: {e}")
         time.sleep(1)
     SEEN.parent.mkdir(exist_ok=True)
-    SEEN.write_text(json.dumps(seen_list[-20000:]))
+    tmp = SEEN.with_suffix(".tmp")
+    tmp.write_text(json.dumps(seen_list[-20000:]), encoding="utf-8")
+    tmp.replace(SEEN)
     print(f"watcher: {new} new matching jobs queued ({len(wl)} companies)")
 
 

@@ -18,7 +18,8 @@ def rows():
     if not F.exists():
         return []
     with F.open(encoding="utf-8", newline="") as f:
-        return list(csv.DictReader(f))
+        # older CSV without every column must not crash the outreach step
+        return [{c: (r.get(c) or "") for c in COLS} for r in csv.DictReader(f)]
 
 
 def save(rs):
@@ -66,13 +67,22 @@ def main():
         save(rs)
         print("logged")
     elif args.cmd == "update":
+        dry = os.environ.get("DRY_RUN", "0").strip().lower() in ("1", "true", "yes")
+        if dry and args.status in ("requested", "dm_sent", "followup_sent"):
+            print(f"DRY_RUN_BLOCKED: cannot mark {args.status} while DRY_RUN=1 (nothing was sent)")
+            sys.exit(5)
+        found = False
         for r in rs:
             if r["url"] == args.url:
+                found = True
                 r["status"], r["status_date"] = args.status, today()
                 if args.status == "dm_sent":
                     r["dm_date"] = today()
                 if args.notes:
                     r["notes"] = args.notes
+        if not found:
+            print(f"NOT_FOUND: {args.url}")
+            sys.exit(2)
         save(rs)
         print("updated")
     elif args.cmd == "count":
@@ -91,11 +101,17 @@ def main():
             if r["status"] == "accepted" and not r["dm_date"]:
                 print(f"DM_NOW | {r['name']} | {r['title']} @ {r['company']} | {r['url']}")
             if r["status"] == "dm_sent" and r["dm_date"]:
-                age = (dt.date.today() - dt.date.fromisoformat(r["dm_date"])).days
+                try:
+                    age = (dt.date.today() - dt.date.fromisoformat(r["dm_date"])).days
+                except ValueError:
+                    continue
                 if age >= days:
                     print(f"FOLLOWUP | {r['name']} | {r['title']} @ {r['company']} | {r['url']} | dm {age}d ago")
             if r["status"] == "requested":
-                age = (dt.date.today() - dt.date.fromisoformat(r["status_date"])).days
+                try:
+                    age = (dt.date.today() - dt.date.fromisoformat(r["status_date"])).days
+                except ValueError:
+                    continue
                 if age >= 2:
                     print(f"CHECK_ACCEPTED | {r['name']} | {r['company']} | {r['url']}")
 

@@ -219,3 +219,81 @@ This pass looked at the parts round 1 and 2 did not touch: the OpenCode permissi
 | Email templates | locked until you send your own |
 
 
+
+## 11. Re-audit round 4 (same day, full-project pass)
+
+This pass went after the gaps the earlier rounds created or missed: tool-level secret access, the password exception that round 3 accidentally closed, unattended Gmail startup, Telegram answer replay, cold-email limit accounting, and doc/code contradictions.
+
+### New findings and fixes
+
+| # | Severity | Finding | Fix | Proof |
+|---|---|---|---|---|
+| 1 | HIGH | `grep` could read `secrets/` contents even though the `read` tool was denied. The permission table names the grep resource as the regex, not the path, so no path rule protected it | added `{action:"grep", resource:"*", effect:"deny"}`; grep is fully unavailable to the job agent | `GREP_UNAVAILABLE`; shell fallback `Permission denied: shell`; no canary content returned |
+| 2 | HIGH | round 3 deny rules made rule 4's one allowed write impossible: the agent could not append a new career-page password to `secrets/portal_accounts.csv` via shell or edit | new `scripts/portal_account.py new` helper generates, stores and prints the password once; AGENTS/apply_flow point to it | create exit 0, 20 chars, 4 columns; duplicate exit 2; test CSV removed |
+| 3 | HIGH (data) | CGPA conflict is real, not cosmetic: base PDF and `resume/master.json` say **9.25**, while `profile.yaml`, `answers.yaml`, `AGENTS.md` and the cold-email draft header use **9.27** | not changed silently; flagged for a one-number decision. The rendered PDF is the strongest evidence | base PDF text: `CGPA: 9.25 / 10.0`; GreyOrange draft subject uses 9.25 |
+| 4 | MEDIUM | `gmail_reader.py` called `service("gmail","v1")` with the interactive default, so every chat2 cycle without OAuth raised a raw `FileNotFoundError` and tried the browser path | `interactive=False`; missing token/credentials returns `GMAIL_NOT_CONFIGURED` with exit 0 so the cycle continues | both `recent` and `otp` exit 0 with the clean message |
+| 5 | MEDIUM | `ask.py` never confirmed the answer update. The next ask re-read the same Telegram update and appended it to `telegram_inbox.jsonl`, creating a stale/duplicate answer | `consume(offset)` confirms the answer before exit; callback taps are saved to the inbox too; callback data is truncated by bytes, not characters | compiles; live Telegram path intentionally not spammed |
+| 6 | MEDIUM | `outreach.py update` allowed marking `requested`/`dm_sent` while `DRY_RUN=1`, and printed `updated` even when the URL did not exist | sent-like statuses exit 5 `DRY_RUN_BLOCKED`; unknown URL exits 2 `NOT_FOUND`; `accepted` still allowed | both sent-like statuses exit 5; unknown URL exit 2; valid accepted exit 0 |
+| 7 | MEDIUM | cold-email daily count, warm-up day index and gap only looked at rows whose status was exactly `sent`. Marking a send `replied` reset the warm-up and could allow extra sends | all three now use `sent_at` regardless of current status | code review + queue/count tests; replied rows stay counted |
+| 8 | MEDIUM | `recruiter_sheet.py` per-domain cap and duplicate set ignored `failed`/`skipped` rows that had already been sent, so a bounced address could come back | active row = queued/draft/sent/replied **or** non-empty `sent_at` | queued 2 live rows, both unique domains; restored CSV |
+| 9 | MEDIUM | `cold_email.py queue` had no per-domain cap even though the playbook says one contact per company | `targeting.max_per_domain: 1`; queue returns `DOMAIN_LIMIT` | first contact queued; second at same domain exit 4 |
+| 10 | MEDIUM | `cold_email.py draft` accepted em/en dashes and bodies with no name/company, despite hard rule 20 and `require_personalization: true` | `STYLE_DASH` and `PERSONALIZATION_MISSING` reject before writing a draft | dash exit 2; no-name exit 2; valid draft `DRAFT_READY` 41 words |
+| 11 | MEDIUM | `job_matching.md` salary floors contradicted `profile.yaml`: remote 8 vs 6, service 7 vs 8, other-city approval 90 vs 85 | doc now matches profile exactly | diff reviewed |
+| 12 | MEDIUM | `apply_flow.md` omitted `--chat chatN` on `tracker check` and `tracker add`, so per-chat budgets would not attribute applications | both commands now include `--chat chatN` | diff reviewed |
+| 13 | LOW | `resolve` still advertised pattern guesses, but `never_email` now blocks every one of them | no pattern fallback; `NO_VERIFIED_EMAIL` exit 2 and a named-contact instruction; skill updated | code + skill diff |
+| 14 | LOW | watcher `seen_jobs.json`, recruiter MX cache and recruiter RAW file were written in place. A crash could corrupt them and break the next run | atomic `tmp.replace(target)`; corrupt JSON/SEEN recovers as empty; bad watchlist YAML prints one error and stops cleanly | live watcher: 14 companies, 0 new, queue stays 12 |
+| 15 | LOW | Gmail `seen_mail.json` had the same corruption risk | atomic replace + recovery | compile + code path |
+| 16 | LOW | `stop_all.ps1` killed the parent Python only, leaving an `opencode run`/Chrome child alive to finish a cycle after "stop" | `taskkill /PID <pid> /T /F` kills the process tree | PowerShell syntax review; no loops running during test |
+| 17 | LOW | `load_env` did not strip inline comments; `safe_cell` checked the first character before leading whitespace | inline ` #` stripping for unquoted values; formula check on `lstrip()` | compile + code review |
+| 18 | LOW | `resume_tailoring.md` told the agent to set a `headline` the renderer never reads, and told it never to use a `--no-guard` flag that does not exist | doc now says summary is the only headline and the guard has no bypass | diff reviewed |
+| 19 | INFO | tracked `AGENTS_FULL_BACKUP.md` was a stale copy with the old model, `bash`, and no cold-email rules | untracked with `git rm --cached` (local backup kept), `.gitignore`d so it is not shipped or read | `git status` shows deletion from index only; local file still present |
+| 20 | INFO | README still said Gmail is read-only, 3 terminals only, and V1 `permission` | updated for send token, startup scripts, V2 deny rules, cold email/recruiter sheet/portal helper | diff reviewed |
+
+### Round 4 verification summary
+
+- `grep` tool: unavailable; `read`/`shell`/`glob` canaries denied; control file readable.
+- Portal password helper: create, duplicate guard, CSV shape, cleanup.
+- Gmail without OAuth: clean `GMAIL_NOT_CONFIGURED`, exit 0, no browser attempt.
+- Outreach: DRY_RUN sent-like block, NOT_FOUND, accepted allowed.
+- Cold email: duplicate, domain cap, generic mailbox block, dash block, personalization block, valid draft, draft-mode send held.
+- Recruiter sheet: 1838 usable / 1449 domains, MX verify 5 (4 ok, 1 no MX), queue 2, restored.
+- Watcher: 14 boards live, 0 new, 12 queued rows unchanged.
+- Tracker: dry add, `exists=YES`, `check 0/10`, summary shows `dry_applied_auto`, dry rows not counted, test CSV removed.
+- Daily report dry: exit 0 with no tracker file.
+- All `scripts/*.py` compile; all YAML/JSON parse.
+
+### Residual risks (still not a sandbox)
+
+| Risk | Why it remains | Suggested fix |
+|---|---|---|
+| Playwright MCP can navigate to `file:///...` and read local files | MCP tool permissions are all-or-nothing per tool, not per URL/path | check the MCP server for a URL allowlist/blocklist flag; otherwise accept and keep prompt-injection rule 5 |
+| `webfetch` can reach localhost/internal services | needed for research; no host allowlist | restrict to https + known domains if the harness supports it |
+| shell deny is still pattern-based | docs say shell runs with the user's authority; a command that avoids the blocked words may reach a secret | move `secrets/` and `.env` outside the project root, or apply NTFS ACLs |
+| cold-email send is at-least-once on an ambiguous network failure | Gmail may accept the message and the response may still fail; retry can duplicate | add a deterministic `Message-ID`, search Sent before retry, or accept manual review |
+| `max_per_cycle`, `apollo.reveal_emails`, `one_ask_only` | still config-only | wire into code or remove from config |
+| tracker limit check is not atomic | two chats can exceed a cap by 1-2 | reserve a slot at check time or accept |
+| watcher marks a job seen before filtering | criteria changes will not re-open old filtered jobs | add `--rescan` or only persist queued URLs |
+| no resume page-count check | a 2-page tailored PDF can pass the fabrication guard | add a pypdf page-count warning |
+| CGPA mismatch | needs Bhagyansh's decision | set one number in profile, answers, AGENTS and master, then re-render |
+| Gmail OTP and Telegram ask paths are not live-tested | avoid spamming the phone / no OAuth yet | test once during first supervised cycle |
+
+### Current live state after round 4
+
+- `state/PAUSE` still exists on purpose; loops are installed at logon but idle.
+- Career-page queue: 12 fresh India/remote jobs.
+- Cold email: 1 real GreyOrange draft (`draft_ready`), nothing sent; mode `draft`.
+- LinkedIn outreach: 2 draft rows, 0 requests sent.
+- No live agent cycle has run yet.
+- Test artifacts (canaries, temp CSVs, temp PDFs, test rows) removed/restored.
+
+### Still blocked on you
+
+| Need | Why |
+|---|---|
+| Apollo API key | people search + verified emails |
+| Gmail read OAuth (`python scripts/google_auth.py`) | OTP reading for portal logins |
+| Gmail send OAuth (`python scripts/google_auth.py --send`) | actually sending cold email |
+| Resume PDF | portal profile setup on all 11 portals |
+| CGPA: 9.25 or 9.27 | four files disagree; pick one |
+| Portfolio URL | empty in profile + answers |
+| Email/connection templates | locked until you send your own |

@@ -6,8 +6,8 @@ Open the FULL JD first. Extract: title, company, company type (product / startup
 - JD contains blacklist keyword (training fee, bond, unpaid, commission only, walk-in, telecalling ...)
 - min experience >= 2 years ("0-2", "freshers", "0-1" are OK)
 - posted older than 14 days
-- location: tier1 / tier2 / remote are OK. Other cities (south/west) ONLY if salary >= 10 LPA is shown; if not shown -> skip unless match >= 90 and then ask on Telegram
-- salary shown and below floor: remote/north < 8 LPA skip; service-based < 7 LPA skip (7-8 only if match >= 85)
+- location: tier1 / tier2 / remote are OK. Other cities (south/west) ONLY if salary >= 10 LPA is shown; if not shown -> skip unless match >= 85 and then ask on Telegram
+- salary shown and below floor: remote < 6 LPA skip; north onsite < 8 LPA skip; other cities < 10 LPA skip; service-based < 8 LPA skip (no 7-8 exception)
 - internship: skip if unpaid / no stipend
 - already in tracker (url or company+role)
 

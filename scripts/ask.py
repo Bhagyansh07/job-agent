@@ -16,6 +16,27 @@ opts = [o.strip() for o in a.options.split(",") if o.strip()]
 lock = ROOT / "state" / "ask.lock"
 lock.parent.mkdir(exist_ok=True)
 
+
+def cut(s, n=60):
+    """Telegram limits callback_data to 64 bytes, not 64 characters."""
+    return s.encode("utf-8")[:n].decode("utf-8", "ignore")
+
+
+def save_inbox(text):
+    inbox = ROOT / "state" / "telegram_inbox.jsonl"
+    line = {"ts": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "text": text}
+    inbox.parent.mkdir(exist_ok=True)
+    with inbox.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(line, ensure_ascii=False) + "\n")
+
+
+def consume(off):
+    """Confirm the answer update so the next ask() cannot replay it into the inbox."""
+    try:
+        tg_api("getUpdates", {"offset": off, "timeout": 0})
+    except Exception:
+        pass
+
 deadline = time.time() + a.timeout
 got_lock = False
 while time.time() < deadline:
@@ -37,20 +58,19 @@ if not got_lock:
 
 try:
     old = tg_api("getUpdates", {"timeout": 0}).get("result", [])
-    # Pre-drain skip stale updates, but NEVER throw away Bhagyansh's text messages.
-    # Save them so a later cycle can use them for the matching open question.
-    inbox = ROOT / "state" / "telegram_inbox.jsonl"
+    # Pre-drain skip stale updates, but NEVER throw away Bhagyansh's text messages
+    # or button taps. Save them so a later cycle can use them for the matching open question.
     for u in old:
         m = u.get("message")
         if m and str(m.get("chat", {}).get("id")) == chat and m.get("text"):
-            line = {"ts": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "text": m["text"]}
-            inbox.parent.mkdir(exist_ok=True)
-            with inbox.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(line, ensure_ascii=False) + "\n")
+            save_inbox(m["text"])
+        cb = u.get("callback_query")
+        if cb and str(cb.get("message", {}).get("chat", {}).get("id")) == chat and cb.get("data"):
+            save_inbox(cb["data"])
     offset = (old[-1]["update_id"] + 1) if old else None
     payload = {"chat_id": chat, "text": a.question}
     if opts:
-        payload["reply_markup"] = {"inline_keyboard": [[{"text": o, "callback_data": o[:60]}] for o in opts]}
+        payload["reply_markup"] = {"inline_keyboard": [[{"text": o, "callback_data": cut(o)}] for o in opts]}
     tg_api("sendMessage", payload)
     end = time.time() + a.timeout
     while time.time() < end:
@@ -70,10 +90,12 @@ try:
                     tg_api("answerCallbackQuery", {"callback_query_id": cb["id"]})
                 except Exception:
                     pass
+                consume(offset)
                 print(cb["data"])
                 raise SystemExit(0)
             m = u.get("message")
             if m and str(m["chat"]["id"]) == chat and m.get("text"):
+                consume(offset)
                 print(m["text"])
                 raise SystemExit(0)
     print("TIMEOUT")

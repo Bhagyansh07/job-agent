@@ -2,7 +2,7 @@
 python scripts/gmail_reader.py otp --minutes 10 [--sender naukri]   -> prints the newest OTP/verification code or NOT_FOUND
 python scripts/gmail_reader.py recent --hours 24 [--notify]          -> recruiter/interview style mails not seen before
 The agent must NEVER reply to mails. Reading only."""
-import argparse, base64, json, re, time
+import argparse, base64, json, re, sys, time
 from common import ROOT
 from google_auth import service
 
@@ -46,44 +46,66 @@ def main():
     r.add_argument("--hours", type=int, default=24)
     r.add_argument("--notify", action="store_true")
     args = ap.parse_args()
-    svc = service("gmail", "v1")
 
-    if args.cmd == "otp":
-        q = f"after:{int(time.time()) - args.minutes * 60}"
-        if args.sender:
-            q += f" from:{args.sender}"
-        for m in fetch(svc, q, 10):
-            text = hdr(m, "Subject") + "\n" + walk_text(m["payload"])
-            hit = re.search(r"(?i)(otp|code|verification|passcode|pin)[^\d]{0,60}(\d{4,8})", text)
-            if not hit and args.sender:
-                # only trust a bare 6 digit code when the sender filter is set
-                hit = re.search(r"\b(\d{6})\b", text)
-            if hit:
-                print(hit.group(hit.lastindex))
-                return
-        print("NOT_FOUND")
-    else:
-        q = f"after:{int(time.time()) - args.hours * 3600} -category:promotions -category:social"
-        seen = set(json.loads(SEEN.read_text())) if SEEN.exists() else set()
-        lines = []
-        for m in fetch(svc, q, 40):
-            if m["id"] in seen:
-                continue
-            subj, frm = hdr(m, "Subject"), hdr(m, "From")
-            if KEYWORDS.search(subj) or KEYWORDS.search(m.get("snippet", "")):
-                lines.append(f"- {frm} | {subj} | {m.get('snippet', '')[:140]}")
-            seen.add(m["id"])
-        SEEN.parent.mkdir(exist_ok=True)
-        SEEN.write_text(json.dumps(sorted(seen)[-2000:]))
-        if not lines:
-            print("NONE")
-            return
-        text = "Recruiter / application mails (reply khud karna):\n" + "\n".join(lines)
-        print(text)
-        if args.notify:
-            from notify import send
-            send(text)
+    try:
+        svc = service("gmail", "v1", interactive=False)
+    except FileNotFoundError:
+        print("GMAIL_NOT_CONFIGURED: secrets/credentials.json missing")
+        return 0
+    except RuntimeError as exc:
+        # Missing OAuth is expected until Bhagyansh finishes setup. Do not break a cycle.
+        print(f"GMAIL_NOT_CONFIGURED: {exc}")
+        return 0
+    except Exception as exc:  # noqa: BLE001
+        print(f"GMAIL_AUTH_FAILED: {type(exc).__name__}: {str(exc)[:160]}")
+        return 0
+
+    try:
+        if args.cmd == "otp":
+            q = f"after:{int(time.time()) - args.minutes * 60}"
+            if args.sender:
+                q += f" from:{args.sender}"
+            for m in fetch(svc, q, 10):
+                text = hdr(m, "Subject") + "\n" + walk_text(m["payload"])
+                hit = re.search(r"(?i)(otp|code|verification|passcode|pin)[^\d]{0,60}(\d{4,8})", text)
+                if not hit and args.sender:
+                    # only trust a bare 6 digit code when the sender filter is set
+                    hit = re.search(r"\b(\d{6})\b", text)
+                if hit:
+                    print(hit.group(hit.lastindex))
+                    return 0
+            print("NOT_FOUND")
+        else:
+            q = f"after:{int(time.time()) - args.hours * 3600} -category:promotions -category:social"
+            try:
+                seen = set(json.loads(SEEN.read_text(encoding="utf-8")))
+            except Exception:  # corrupted/missing cache must not stop the cycle
+                seen = set()
+            lines = []
+            for m in fetch(svc, q, 40):
+                if m["id"] in seen:
+                    continue
+                subj, frm = hdr(m, "Subject"), hdr(m, "From")
+                if KEYWORDS.search(subj) or KEYWORDS.search(m.get("snippet", "")):
+                    lines.append(f"- {frm} | {subj} | {m.get('snippet', '')[:140]}")
+                seen.add(m["id"])
+            SEEN.parent.mkdir(exist_ok=True)
+            tmp = SEEN.with_suffix(".tmp")
+            tmp.write_text(json.dumps(sorted(seen)[-2000:]), encoding="utf-8")
+            tmp.replace(SEEN)
+            if not lines:
+                print("NONE")
+                return 0
+            text = "Recruiter / application mails (reply khud karna):\n" + "\n".join(lines)
+            print(text)
+            if args.notify:
+                from notify import send
+                send(text)
+    except Exception as exc:  # noqa: BLE001
+        print(f"GMAIL_ERROR: {type(exc).__name__}: {str(exc)[:160]}")
+        return 0
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

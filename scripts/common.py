@@ -11,7 +11,13 @@ def load_env():
             if not line or line.startswith("#") or "=" not in line:
                 continue
             k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+            k = k.strip()
+            v = v.strip()
+            if not (v.startswith('"') or v.startswith("'")) and " #" in v:
+                v = v.split(" #", 1)[0].rstrip()
+            v = v.strip('"').strip("'")
+            if k:
+                os.environ.setdefault(k, v)
 
 
 load_env()
@@ -67,9 +73,12 @@ class FileLock:
 def safe_cell(value):
     """Stop spreadsheet formula injection (values starting with = + - @)."""
     s = "" if value is None else str(value)
-    if s[:1] in ("=", "+", "-", "@"):
+    if not s:
+        return s
+    probe = s.lstrip()
+    if probe[:1] in ("=", "+", "-", "@"):
         try:
-            float(s)
+            float(probe)
             return s
         except ValueError:
             return "'" + s

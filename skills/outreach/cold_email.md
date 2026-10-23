@@ -52,12 +52,10 @@ Tracker: `tracker/cold_emails.csv`. Bodies: `tracker/email_drafts/<id>.txt`.
    - Key goes in `.env` as `APOLLO_API_KEY`. You never read `.env`; the script does.
 2. **Hunter.io** (fallback). `resolve --domain` uses it when `HUNTER_API_KEY` is set. Free tier is
    about 25 searches/month.
-3. **Pattern guess** (last resort). `resolve` prints `hello@`, `careers@`, `jobs@`, `contact@` marked
-   `UNVERIFIED`. Only use a generic inbox when the company has no named contact AND the address is
-   clearly monitored for hiring. Log `source=pattern_guess` in notes.
+3. **No pattern guessing.** `resolve` no longer prints `hello@`, `careers@`, `jobs@`, `contact@`; they are generic inboxes and are blocked by policy. If Hunter has nothing, find a named person on LinkedIn and use their address.
 4. **LinkedIn** already gives you the person and company; then resolve the domain here.
 
-Never send to `info@`, `support@`, `noreply@` (blocked in code).
+Never send to `info@`, `support@`, `noreply@`, `hr@`, `careers@`, `jobs@`, `hello@`, `contact@` or any other generic mailbox (blocked in code via `never_email`).
 
 ## Which companies
 Priority order:
@@ -77,7 +75,7 @@ hard skip list in AGENTS.md.
 3. Recruiter / talent acquisition for size 150+, only if they hire freshers.
 4. JECRC alumnus anywhere = jump the queue.
 
-One person per company per week. Never two contacts at the same company in the same day.
+One contact per company domain by default (`targeting.max_per_domain: 1`, enforced by the queue). Do not queue a second person at the same company.
 
 ## Email copy rules
 - Subject: under 60 chars, specific, no clickbait, no "Opportunity", no emoji.
@@ -89,6 +87,9 @@ One person per company per week. Never two contacts at the same company in the s
   on your team?" Never both.
 - Mention the company product or a recent update. One line minimum, or it is spam.
 - No em dashes, no en dashes, no "I hope this email finds you well", no "I came across your profile".
+  `cold_email.py draft` rejects em/en dashes with `STYLE_DASH`.
+- The body must mention the contact's first name or the company. `draft` rejects it with
+  `PERSONALIZATION_MISSING` otherwise (`targeting.require_personalization: true`).
 - Plain text only. No attachments on the first email. No tracking pixels.
 - Sign off: name, phone, LinkedIn, GitHub. Use the values from `config/profile.yaml`.
 
@@ -96,7 +97,7 @@ One person per company per week. Never two contacts at the same company in the s
 1. `cold_email.py count` -> if at limit, stop.
 2. `cold_email.py review` -> if drafts are waiting, alert them on Telegram and stop (draft mode).
 3. `cold_email.py apollo ...` -> shortlist 3 to 5 people from target companies.
-4. `cold_email.py queue ...` for the best ones (skip duplicates).
+4. `cold_email.py queue ...` for the best ones (duplicates and a second contact at the same domain are refused).
 5. Write the body to `state/tmp/email_<id>.txt`, then `cold_email.py draft`.
 6. In `auto` mode only: `cold_email.py send --id <id>`, one at a time, respecting the 4h gap.
 7. Update statuses with `mark` when a reply or bounce shows up. Replies are never answered by you;

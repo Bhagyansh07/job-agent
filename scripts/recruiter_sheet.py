@@ -29,7 +29,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from common import ROOT
+from common import ROOT, cfg
 
 SID = "1pF_d6Zu5eWoKtAo5K6bFJ6d2BYA0m8VEXOVf2NHtiuA"
 URL = f"https://docs.google.com/spreadsheets/d/{SID}/gviz/tq?tqx=out:csv"
@@ -74,7 +74,9 @@ def fetch() -> list[dict]:
     req = urllib.request.Request(URL, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=40) as resp:
         raw = resp.read().decode("utf-8-sig", "replace")
-    RAW.write_text(raw, encoding="utf-8", newline="")
+    tmp = RAW.with_suffix(".tmp")
+    tmp.write_text(raw, encoding="utf-8", newline="")
+    tmp.replace(RAW)
     rows = load()
     print(f"FETCHED {len(rows)} rows -> {RAW.relative_to(ROOT)}")
     return rows
@@ -91,6 +93,8 @@ def score(company: str) -> int:
 
 
 def clean(rows: list[dict]) -> list[dict]:
+    never = [p.lower() for p in
+             ((cfg("cold_email.yaml").get("targeting") or {}).get("never_email") or [])]
     seen = set()
     out = []
     for r in rows:
@@ -99,6 +103,8 @@ def clean(rows: list[dict]) -> list[dict]:
             continue
         local, _, domain = e.partition("@")
         if GENERIC.match(local):
+            continue
+        if any(e.startswith(p) for p in never):
             continue
         if e in seen:
             continue
@@ -152,12 +158,21 @@ def mx_ok(domain: str, cache: dict) -> bool | None:
 
 def save_mx(cache: dict) -> None:
     MX_CACHE.parent.mkdir(parents=True, exist_ok=True)
-    MX_CACHE.write_text(json.dumps(cache, indent=0), encoding="utf-8")
+    tmp = MX_CACHE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(cache, indent=0), encoding="utf-8")
+    tmp.replace(MX_CACHE)
+
+
+def load_mx() -> dict:
+    try:
+        return json.loads(MX_CACHE.read_text(encoding="utf-8")) if MX_CACHE.exists() else {}
+    except Exception:  # corrupted cache is not worth a failed verification run
+        return {}
 
 
 def cmd_verify(a) -> int:
     rows = clean(load())
-    cache = json.loads(MX_CACHE.read_text()) if MX_CACHE.exists() else {}
+    cache = load_mx()
     checked = good = bad = unknown = 0
     for r in rows[: a.limit]:
         ok = mx_ok(r["domain"], cache)
@@ -191,16 +206,16 @@ def cmd_queue(a) -> int:
         rows = [r for r in rows if r["score"] >= a.min_score]
     rows.sort(key=lambda r: (-r["score"], r["company"].lower()))
 
-    cache = json.loads(MX_CACHE.read_text()) if MX_CACHE.exists() else {}
+    cache = load_mx()
     added = skipped_dup = skipped_mx = skipped_domain = 0
     per_domain: dict[str, int] = {}
     with FileLock(LOCK):
         existing = rows_unlocked()
-        known = {r["email"].lower() for r in existing
-                 if r["status"] in ("queued", "draft_ready", "sent", "replied")}
+        active = lambda r: r["status"] in ("queued", "draft_ready", "sent", "replied") or r.get("sent_at")
+        known = {r["email"].lower() for r in existing if active(r)}
         # company domains already in play count toward --max-per-domain
         for r in existing:
-            if r["status"] in ("queued", "draft_ready", "sent", "replied") and "@" in r["email"]:
+            if active(r) and "@" in r["email"]:
                 d = r["email"].split("@")[-1].lower()
                 per_domain[d] = per_domain.get(d, 0) + 1
         for r in rows:
@@ -227,7 +242,7 @@ def cmd_queue(a) -> int:
     if a.verify:
         save_mx(cache)
     print(f"queued={added} duplicate={skipped_dup} same_domain={skipped_domain} "
-          f"no_mx={skipped_mx} mode=check config/cold_email.yaml")
+          f"no_mx={skipped_mx} next=cold_email.py draft (mode in config/cold_email.yaml)")
     return 0
 
 

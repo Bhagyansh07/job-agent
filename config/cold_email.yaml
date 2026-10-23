@@ -64,6 +64,7 @@ targeting:
     - admin@
     - sales@
   require_personalization: true   # every email must mention the company product or a recent update
+  max_per_domain: 1               # one contact per company domain at a time (no blasting)
 
 # --- copy rules (checked before a draft is accepted) ---
 copy:

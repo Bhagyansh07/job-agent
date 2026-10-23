@@ -145,7 +145,7 @@ def add_row(rs: list[dict[str, str]], **kw) -> str:
 
 # ---------------------------------------------------------------- limits
 def day_index(rs: list[dict[str, str]]) -> int:
-    sent = sorted(r["sent_at"][:10] for r in rs if r["status"] == "sent" and r["sent_at"])
+    sent = sorted(r["sent_at"][:10] for r in rs if r["sent_at"])
     if not sent:
         return -1
     return (dt.date.fromisoformat(today()) - dt.date.fromisoformat(sent[0])).days
@@ -162,7 +162,8 @@ def daily_limit(rs: list[dict[str, str]]) -> int:
 
 
 def sent_today(rs: list[dict[str, str]]) -> int:
-    return sum(1 for r in rs if r["status"] == "sent" and r["sent_at"][:10] == today())
+    # replied/failed rows still count: the email did leave the machine that day
+    return sum(1 for r in rs if r["sent_at"][:10] == today())
 
 
 def now_ist() -> dt.datetime:
@@ -315,6 +316,14 @@ def cmd_queue(a) -> int:
                for r in rs):
             print(f"DUPLICATE: {email} already queued/sent")
             return 4
+        domain = email.split("@")[-1]
+        cap = int((cc().get("targeting", {}) or {}).get("max_per_domain", 1))
+        same_domain = sum(1 for r in rs if r["email"].lower().endswith("@" + domain)
+                          and (r["status"] in ("queued", "draft_ready", "sent", "replied")
+                               or r.get("sent_at")))
+        if same_domain >= cap:
+            print(f"DOMAIN_LIMIT: {domain} already has {same_domain} contact(s) (max {cap})")
+            return 4
         rid = add_row(rs, company=a.company, name=a.name or "", title=a.title or "",
                       email=email, source=a.source or "", notes=a.notes or "",
                       linkedin=a.linkedin or "")
@@ -372,6 +381,18 @@ def cmd_draft(a) -> int:
         if row["status"] not in ("queued", "draft_ready"):
             print(f"BAD_STATUS: {row['status']}")
             return 2
+        if any(ch in subject + body for ch in ("\u2014", "\u2013")):
+            print("STYLE_DASH: em dash or en dash found in subject/body (hard rule 20)")
+            return 2
+        t = cc().get("targeting", {}) or {}
+        if t.get("require_personalization", False):
+            name = (row.get("contact_name") or "").strip()
+            first = name.split()[0].lower() if name else ""
+            comp = (row.get("company") or "").strip().lower()
+            low = body.lower()
+            if not ((first and first in low) or (comp and comp in low)):
+                print("PERSONALIZATION_MISSING: mention the contact's first name or the company")
+                return 2
         DRAFTS.mkdir(parents=True, exist_ok=True)
         (DRAFTS / f"{a.id}.txt").write_text(body, encoding="utf-8")
         row["status"], row["subject"] = "draft_ready", subject
@@ -423,7 +444,7 @@ def cmd_send(a) -> int:
             print(f"LIMIT cold_email {n}/{limit} today (warm-up ramp applies until day 15)")
             return 3
         gap_h = limits()[1]["gap_h"]
-        last = [r["sent_at"] for r in rs if r["status"] == "sent" and r["sent_at"]]
+        last = [r["sent_at"] for r in rs if r["sent_at"]]
         if last:
             last_dt = dt.datetime.fromisoformat(max(last))
             if last_dt.tzinfo is None:
@@ -500,10 +521,11 @@ def cmd_resolve(a) -> int:
                           f"{m.get('position') or ''} | verified")
             return 0
         except Exception as exc:  # noqa: BLE001
-            print(f"HUNTER_FAILED ({type(exc).__name__}); falling back to pattern guesses")
-    for p in ("hello", "careers", "jobs", "contact"):
-        print(f"{p}@{domain} | UNVERIFIED pattern guess - confirm the mailbox exists before sending")
-    return 0
+            print(f"HUNTER_FAILED ({type(exc).__name__}); no pattern fallback")
+    print(f"NO_VERIFIED_EMAIL: {domain}")
+    print("Pattern guesses (hello@, careers@, jobs@, contact@) are blocked by the generic-mailbox policy.")
+    print("Find a named contact with Apollo or LinkedIn, then queue that address.")
+    return 2
 
 
 def cmd_mark(a) -> int:
