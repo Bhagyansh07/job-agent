@@ -1,0 +1,153 @@
+# ===== Bhagyansh - job search criteria (edit freely) =====
+candidate:
+  name: Bhagyansh Chandel
+  degree: "B.Tech Computer Science, JECRC University Jaipur (graduating 2027), CGPA 9.27"
+  available_from: "Immediately (part-time / remote / full-time ok)"
+  email: "bhagyanshchandel3567@gmail.com"
+  phone: "6268228869"
+  linkedin: "https://www.linkedin.com/in/bhagyanshchandel"
+  github: "https://github.com/Bhagyansh07"
+  portfolio: ""    # coming soon - fill when Bhagyansh sends the URL
+
+roles_include:
+  - full stack
+  - fullstack
+  - full-stack
+  - sde
+  - software engineer
+  - software developer
+  - associate software engineer
+  - backend
+  - back end
+  - back-end
+  - frontend
+  - front end
+  - front-end
+  - react
+  - node
+  - mern
+  - web developer
+  - python developer
+  - java developer
+  - trainee engineer
+  - graduate engineer
+
+roles_exclude_title:
+  - senior
+  - sr.
+  - lead
+  - staff
+  - principal
+  - architect
+  - manager
+  - director
+  - head of
+  - vp
+  - sales
+  - bpo
+  - telecaller
+  - tele caller
+  - business development
+  - marketing
+  - recruiter
+  - hr 
+  - hr-
+  - human resource
+  - customer support
+  - data entry
+  - qa manual
+  - devops lead
+
+blacklist_keywords_jd:   # if JD/page contains these, SKIP
+  - training fee
+  - security deposit
+  - registration fee
+  - pay to join
+  - commission only
+  - commission-based
+  - unpaid
+  - no stipend
+  - walk-in
+  - walk in
+  - telecalling
+  - cold calling
+  - mlm
+  - network marketing
+
+experience:
+  max_required_min_years: 1     # apply if JD minimum experience is 0 or 1 yr. "0-2 yrs" is OK (min=0). "2+ yrs" = skip.
+  bond_max_months: 12           # service bond/agreement up to 12 months is fine, more than that = skip
+  night_shift: allowed          # night/rotational shifts are fine
+  take_home_assignment: "allowed - apply anyway, then log needs_input with the test link and alert Bhagyansh on Telegram"
+
+posting_age:                    # days since posted
+  normal_max: 3                 # normal thresholds
+  extended_max: 7               # need match >= 80
+  stretch_max: 14               # need match >= 85 AND a sign it is still active (few applicants / actively hiring / recently reposted)
+  hard_skip_over: 14
+
+locations:
+  tier1: [remote, work from home, wfh, delhi, new delhi, ncr, gurgaon, gurugram, noida, greater noida, ghaziabad, faridabad]
+  tier2: [jaipur, indore, bhopal, jhansi, gwalior, chandigarh, mohali, lucknow, dehradun, kanpur, agra, udaipur, kota, ujjain, jabalpur, raipur]
+  other_requires_double_digit_ctc: [bangalore, bengaluru, hyderabad, chennai, pune, mumbai, kochi, trivandrum, coimbatore, ahmedabad, kolkata]
+
+salary_lpa:
+  remote_min: 6                 # remote/WFH floor 6 LPA
+  onsite_north_min: 8
+  other_cities_min: 10          # south/west: only if >= 10 LPA
+  service_company_min: 8        # TCS/Infosys type service companies: 8 LPA floor
+  service_company_absolute_min: 8
+  undisclosed_policy: "apply if product/startup and match>=80; for service-based or other_cities ask on Telegram only if match>=85, else skip"
+  internship: "must have a stipend (no unpaid); prefer PPO / conversion to full-time"
+
+include_types: [full-time, internship, off-campus-drive, contract-to-hire]
+exclude_types: [walk-in]
+
+match:
+  auto_apply_min: 80
+  ask_user_min: 60              # 60-79 -> Telegram approval. below 60 -> skip.
+  weights: {role_fit: 30, tech_stack: 30, experience_fit: 15, location_salary: 15, freshness_quality: 10}
+
+limits:
+  global_daily: 100
+  default_per_portal: 15
+  per_chat: {chat1: 30, chat2: 25, chat3: 45}
+  per_portal:
+    naukri: 10
+    linkedin: 10
+    indeed: 10
+    instahyre: 10
+    foundit: 10
+    hirist: 10
+    wellfound: 10
+    cutshort: 10
+    apna: 8
+    glassdoor: 5
+    internshala: 10
+    unstop: 10
+    yc_waas: 10
+    remote_boards: 12
+    career_pages: 30
+
+session:
+  portals_per_cycle: 1
+  max_applications_per_cycle: 8
+  min_applications_per_portal: 8
+
+active_hours_ist:               # portals with strong bot-detection: only these hours
+  strict_portals: [naukri, linkedin, indeed, instahyre, foundit, glassdoor, apna]
+  from: "08:00"
+  to: "23:30"
+  # all other portals / career pages / ATS: 24x7
+
+pacing_seconds:
+  between_applications: [25, 90]
+  between_clicks: [2, 6]
+
+outreach:
+  mode: auto                    # auto | draft
+  connection_requests_per_day: 12      # safe range 10-15
+  followup_after_days: 6               # once only, 5-7 days
+  tone: "professional English; adapt a bit to the person (recruiter vs engineer vs alumni vs founder)"
+  targets: [recruiters/HR, SDE/EM at target companies, JECRC alumni, startup founders/CTOs]
+  send_dm_only_if: "connection accepted"

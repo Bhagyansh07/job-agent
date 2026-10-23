@@ -1,0 +1,7 @@
+# Companies whose career pages are watched every 30 min by scripts/watcher.py.
+# Supported ATS (public JSON APIs): greenhouse, lever, ashby
+# The agent (chat3 discovery step) will ADD companies here as it finds them.
+# token = the company slug in the ATS URL:
+#   greenhouse: boards.greenhouse.io/<token>     lever: jobs.lever.co/<token>     ashby: jobs.ashbyhq.com/<token>
+companies: []
+#  - {name: Example, ats: greenhouse, token: example}

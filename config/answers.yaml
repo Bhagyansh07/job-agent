@@ -1,0 +1,29 @@
+# Fixed form answers. Filled from Bhagyansh's own answers on 2026-10-17.
+# If a value is empty, the agent MUST ask on Telegram (scripts/ask.py) and never guess.
+current_ctc_lpa: "0"
+expected_ctc_lpa: "8"                 # onsite floor 8 LPA
+expected_ctc_remote: "6"              # remote/WFH floor 6 LPA
+notice_period: "1 week (max 15 days)"
+willing_to_relocate: "Yes"            # any city, no restriction
+willing_to_work_onsite_delhi_ncr: "Yes"
+willing_to_work_remote: "Yes"
+work_authorization_india: "Yes"
+work_mode: "Any (remote, hybrid or onsite)"
+gender: "Male"
+date_of_birth: "16-02-2005"
+total_experience_years: "0"           # fresher
+graduation_year: "2027"
+cgpa: "9.27"
+highest_qualification: "B.Tech (Computer Science), pursuing"
+college: "JECRC University, Jaipur"
+current_location: "Jaipur, Rajasthan"
+preferred_locations: "Delhi NCR, Gurgaon, Noida, Jaipur, Remote. Bangalore/Pune/Mumbai/Hyderabad only if package is 10+ LPA."
+open_to_internship: "Yes"
+open_to_service_companies: "Yes, only if package is 8+ LPA"
+open_to_bond: "Yes, up to 12 months"
+open_to_take_home_task: "Yes"
+open_to_night_shift: "Yes"
+how_did_you_hear: "Company career page / job portal"
+github: ""
+portfolio: ""
+linkedin: ""

@@ -1,0 +1,24 @@
+{
+  "name": "Bhagyansh Chandel",
+  "headline": "Full Stack Developer | React, Node.js, Python",
+  "contact": {"email": "you@example.com", "phone": "+91-XXXXXXXXXX", "location": "Jaipur, India", "linkedin": "linkedin.com/in/...", "github": "github.com/...", "portfolio": ""},
+  "summary": "Final-year B.Tech CSE student (CGPA 9.27) building full stack products.",
+  "skills": {
+    "Languages": ["JavaScript", "Python"],
+    "Frontend": ["React"],
+    "Backend": ["Node.js"],
+    "Databases": ["MongoDB"],
+    "Tools": ["Git"]
+  },
+  "experience": [
+    {"title": "Role", "company": "Company", "dates": "Mon YYYY - Mon YYYY", "location": "", "bullets": ["Real bullet from your resume"]}
+  ],
+  "projects": [
+    {"name": "WorkFlow HRMS", "tech": "React, Node.js", "link": "", "bullets": ["Real bullet from your resume"]}
+  ],
+  "education": [
+    {"degree": "B.Tech Computer Science", "school": "JECRC University, Jaipur", "dates": "2023 - 2027", "score": "CGPA 9.27/10"}
+  ],
+  "certifications": [],
+  "achievements": []
+}

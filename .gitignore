@@ -1,0 +1,21 @@
+.env
+secrets/
+browser-profiles/
+output/
+tracker/*.csv
+state/*
+!state/BLOCKED.md
+!state/LEARNINGS.md
+!state/RUN_LOG.md
+!state/.gitkeep
+queue/*
+
+# additions 2026-10-23
+__pycache__/
+*.pyc
+*.zip
+*.bak_*
+resume/*.pdf
+tracker/email_drafts/
+
+.playwright-mcp/

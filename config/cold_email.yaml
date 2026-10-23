@@ -1,0 +1,63 @@
+# Cold email settings - read by scripts/cold_email.py
+#
+# mode: draft  -> drafts are prepared and queued, NOTHING is ever sent
+# mode: auto   -> the agent may send, but only inside every limit below
+mode: draft
+
+# --- sending limits (enforced in code, not in prompts) ---
+daily_cap: 25          # ceiling after warm-up
+warmup_week1: 5        # days 1-7 counted from the first ever send
+warmup_week2: 15       # days 8-14
+min_gap_hours: 4       # no bursts between two sends
+max_per_cycle: 3       # how many emails one agent cycle may draft or send
+
+# --- Apollo.io lead discovery ---
+# Free plan DOES have API access, but a free account must be registered with a
+# work email (a college email usually works, plain Gmail does not).
+# Search costs 0 credits. Revealing one work email costs 1 credit.
+# Free allowance is about 900 credits/year = roughly 75 reveals/month.
+apollo:
+  enabled: true
+  base_url: "https://api.apollo.io/v1"
+  search_path: "/mixed_people/search"
+  match_path: "/people/match"
+  per_page: 25
+  reveal_emails: true
+  max_reveals_per_run: 5
+  person_titles:
+    - founder
+    - co-founder
+    - cto
+    - engineering manager
+    - technical recruiter
+    - talent acquisition
+  person_locations:
+    - India
+  organization_num_employees_ranges:
+    - "1,10"
+    - "11,50"
+    - "51,200"
+
+# --- who to target ---
+targeting:
+  company_priority:
+    - applied_high_match      # companies already applied to with match >= 80
+    - jecrc_alumni
+    - product_startup
+    - recently_funded
+  person_priority:
+    - founder_cto             # company size 1-30
+    - engineering_manager     # company size 31-150
+    - recruiter               # company size 150+
+  never_email:
+    - info@
+    - support@
+    - noreply@
+    - no-reply@
+  require_personalization: true   # every email must mention the company product or a recent update
+
+# --- copy rules (checked before a draft is accepted) ---
+copy:
+  subject_max_chars: 60
+  body_max_words: 120
+  one_ask_only: true

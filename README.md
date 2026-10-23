@@ -1,0 +1,76 @@
+# Job Agent (OpenCode + Playwright + Telegram) - Bhagyansh
+
+Kya karta hai: 3 OpenCode chats alag-alag portals pe insaan ki tarah scroll/click karke apply karte hain
+(~100/day cap), har JD ke hisab se ATS resume banate hain (fake kuch nahi), LinkedIn pe connection + referral DM bhejte hain,
+har portal ke baad Telegram pe audit report dete hain, recruiter mails/messages ka sirf alert dete hain (reply tum karoge).
+
+## Setup (ek baar)
+1. Install: Node.js, Python 3.10+, Google Chrome, OpenCode (`npm i -g opencode-ai`).
+2. Windows timezone set karo: (UTC+05:30) India Standard Time (Settings -> Time & Language -> Time zone).
+3. Is folder me terminal: `pip install -r requirements.txt`
+4. Telegram setup (bot banane se lekar .env bharne tak):
+   - @BotFather pe `/newbot` chalao -> token milega (yahi TELEGRAM_BOT_TOKEN hai).
+   - Us bot ko apne account se ek message bhejo (warna bot reply nahi kar payega).
+   - Browser me `https://api.telegram.org/bot<TOKEN>/getUpdates` kholo -> `result[0].message.chat.id` = TELEGRAM_CHAT_ID.
+   - `.env.example` ko `.env` banao aur TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID bharo.
+   - Setup ke baad BotFather se `/revoke` karke naya token bana lena (purana token kabhi kisi ko mat dena).
+5. Google (Gmail OTP + Sheet tracker): console.cloud.google.com -> naya project -> Gmail API + Google Sheets API enable ->
+   OAuth client (Desktop app) -> `credentials.json` download -> `secrets/credentials.json`.
+   Naya Google Sheet banao, pehle tab ka naam `Applications` rakho, URL se Sheet ID `.env` me GOOGLE_SHEET_ID.
+   Phir: `python scripts/google_auth.py` (browser me allow karo) aur `python scripts/tracker.py init-sheet`.
+   (Gmail sirf READ-ONLY permission leta hai. Agent kabhi browser nahi kholta auth ke liye - token missing ho to
+   sheet sync skip ho jayega aur woh message console/log me dikhega.)
+6. Apna resume PDF `resume/` me daalo.
+7. `config/profile.yaml` me email/phone/links bharo. Criteria wahin se badal sakte ho.
+8. First run: `opencode` kholo is folder me, bolo: **Read chats/00_first_run.md and do it**.
+   Ye resume se master.json banayega, tumse answers.yaml ke khali sawal Telegram pe puchhega, aur
+   tumhe har portal me khud login karwayega (password agent ko nahi dena hai, tum browser me khud login karoge).
+
+## Roz chalane ka tareeka (3 terminals, 24x7)
+```
+python scripts/run_loop.py chat1     # Naukri, Instahyre, Foundit, Hirist, Apna, Internshala
+python scripts/run_loop.py chat2     # LinkedIn(+outreach), Wellfound, Cutshort, Indeed, Glassdoor
+python scripts/run_loop.py chat3     # Career pages/ATS, YC, remote boards, Unstop, discovery (+30 min watcher)
+```
+Har loop naya `opencode run` cycle chalata hai, state files me rehti hai. Laptop sleep na ho (power settings: never sleep),
+charger laga rehne do.
+
+## Control switches (state/ folder)
+- **Pause**: `state/PAUSE` file banao -> teeno chats ruk jayenge (300s me check karte hain, file hatao to chalu).
+  Sirf ek chat rokni ho to `state/PAUSE_chat1` (ya chat2/chat3) banao.
+- **DRY_RUN**: `.env` me `DRY_RUN=1` -> agent final Submit kabhi nahi dabayega; decision `dry_` prefixed status se
+  log hoga aur dry_ rows daily limits me count nahi hote. Sheet sync bhi skip hota hai. Normal chalane ke liye `DRY_RUN=0`.
+- **Per-chat daily budgets** (config/profile.yaml `limits.per_chat`): chat1 = 30, chat2 = 25, chat3 = 45 applications/day.
+  Iske alawa per-portal caps aur global 100/day cap bhi lagti hai.
+- **Cycle logs**: har cycle ka full opencode output `state/logs/<chat>_YYYYMMDD_HHMM.log` me jata hai (console pe last 30 lines).
+  14 din purane .log apne aap delete ho jate hain.
+- **Portal rotation**: har cycle me sirf 1 portal (teeno chats), aur ek cycle me max 8 applications. Cursor
+  `state/chat1_cursor.txt` etc. me rehta hai; jab tak current portal ka per-portal cap hit na ho ya uspe fresh
+  eligible jobs khatam na ho jayein, cursor aage nahi badhta (ek portal kai cycles chal sakta hai). Har portal pe
+  jab itni fresh jobs hon, to kam se kam 8 applications ka target (config/profile.yaml `session`).
+
+## Context saving (session chhota rakhne ke liye)
+- Agent job description ko **text extraction** se padhta hai (`document.body.innerText` browser evaluate, ya Playwright MCP text/read tool).
+- Full accessibility snapshot sirf tab leta hai jab koi specific element ref pe click/select karna ho. Isse session chhota rehta hai.
+
+## Naya (v3)
+- **Late replies**: `state/telegram_inbox.jsonl` me woh replies aate hain jo Bhagyansh ne kisi ask() ke timeout ke baad bheje. Cycle start pe agent inhe padhkar matching question ka answer `state/learned_answers.json` me save karta hai, phir consumed lines inbox se hata deta hai.
+- **Daily summary**: `scripts/daily_report.py` aaj ki counts (status + portal wise), average match aur total rows ka chhota Telegram message banata hai; `GOOGLE_SHEET_ID` set ho to Sheet ka link bhi jodta hai. `run_loop.py` ise din me ek baar chalata hai (guard file `state/.daily_report_date`). Test ke liye `python scripts/daily_report.py --dry` (sirf print, send nahi).
+- **Writing style**: `skills/writing_style.md` - cover letter, "why us", founder note aur LinkedIn DM ke liye anti-AI style guide (no em/en dash, banned words, length limits, pre-submit checklist). HARD RULE 20 isko follow karne ko kehta hai.
+- **Outreach mode**: `config/profile.yaml` me `outreach.mode` = `auto` (abhi) ya `draft`. `auto` me connection requests/DMs direct jaate hain (caps ke andar); `draft` me messages `tracker/outreach.csv` me `draft_ready` status se likhe jaate hain aur pehle ek numbered approval message jaata hai.
+- **Remote/WFH**: remote ya WFH job kabhi sirf location ki wajah se skip nahi hota (HARD RULE 18). Bond/service agreement 12 months tak theek hai (HARD RULE 19).
+
+## Important
+- Naukri/LinkedIn/Indeed/Instahyre ki ToS automation allow nahi karti: ban ka risk hai. Isliye caps (10/day), raat me band (08:00-23:30),
+  human delays rakhe hain. Main account ka backup/alternate account mat bhoolna; warning dikhe to agent us portal ko rok dega.
+- Resume tailoring ke guard se agent koi skill/number add nahi kar sakta jo master.json me nahi hai.
+- `opencode.json` me permissions "allow" hain taaki unattended chale. Agar tumhara OpenCode version schema error de to `permission` block
+  ko docs ke hisab se adjust karo.
+- Playwright MCP pehli baar `npx` se download hota hai; Chrome windows visible rehti hain (login/CAPTCHA ke liye).
+- `config/watchlist.yaml` me companies agent khud add karta hai (greenhouse/lever/ashby).
+- Files: tracker/applications.csv (+Sheet), tracker/outreach.csv, output/resumes/*.pdf, queue/, state/.
+- Secrets (.env, secrets/, browser-profiles/) kisi ko mat bhejna, zip share mat karna.
+
+## Folder map
+AGENTS.md (rules) | chats/ (3 chat playbooks + first run) | skills/ (matching, apply flow, tailoring, writing_style, outreach, portals/*) |
+scripts/ (tracker, telegram, gmail, resume PDF, watcher, runner, daily_report) | config/ (profile, answers, watchlist)
