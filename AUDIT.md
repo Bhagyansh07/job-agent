@@ -164,3 +164,58 @@ python scripts\tracker.py check --portal naukri --chat chat1
 | Portfolio URL | empty in profile + answers |
 | Email templates | locked until you send your own |
 
+## 10. Re-audit round 3 (same day, deeper pass)
+
+This pass looked at the parts round 1 and 2 did not touch: the OpenCode permission layer, the resume renderer, the tracker reader, the cold-email state machine, the Gmail OTP reader, and the runner's failure path.
+
+### New findings and fixes
+
+| # | Severity | Finding | Fix | Proof |
+|---|---|---|---|---|
+| 1 | HIGH | shell commands could still read `secrets/` even though the read tool was denied. The read deny only protected one tool | added shell deny rules for `*secrets*`, `*.env`, `*.env.*`, `*browser-profiles*`, plus `Remove-Item`/`erase` | before: canary printed; after: `Permission denied: shell` |
+| 2 | HIGH | `opencode.json` used the deprecated V1 `permission` object. V2 documents a `permissions` array with action/resource/effect | migrated the whole block to the V2 array, rules ordered so the last match wins | config validates; read deny, shell deny and a normal shell command all behave correctly in one run |
+| 3 | MEDIUM | `render_resume.py` wrote a fixed `state/tmp/_resume.html`. Three chats rendering at the same moment could overwrite each other and save the wrong PDF | unique `mkstemp` file per render, deleted in `finally` | two concurrent renders, both 63,949 bytes, both valid |
+| 4 | MEDIUM | `render_resume.py` accepted any `--out` path and deleted the target first, so `--out state/tmp/evil.txt` was possible | output must end in `.pdf` and stay inside the project | `OUTPUT_MUST_BE_PDF` |
+| 5 | MEDIUM | the resume contact loop rendered phone/email/LinkedIn/location but silently dropped `github` and `portfolio` | both added to the contact tuple | PDF now carries them when present |
+| 6 | MEDIUM | `tracker.rows()` trusted every CSV column; a legacy file missing a column could crash `exists`/`summary` | rows are normalised to the canonical `COLS` | legacy 6-column CSV: `exists` exit 0, `summary` no crash |
+| 7 | MEDIUM | cold-email `mark` allowed `sent -> queued`, and the two-step `sent -> failed -> queued`, so the same address could be emailed twice. `queue` also allowed a bounced address back in | `sent_at` is now a permanent block; queue dedupes on `sent_at` too | `BAD_TRANSITION` on both direct and two-step; queue returns `DUPLICATE` |
+| 8 | MEDIUM | `never_email` blocked only info/support/noreply, so `hr@`, `careers@`, `jobs@`, `talent@` could be queued by hand | full generic-mailbox list added | config check |
+| 9 | MEDIUM | the Gmail OTP reader fell back to any bare 6-digit number in any email, which could type an order number into a portal | bare 6-digit fallback is allowed only when `--sender` is set | code path reviewed, compile OK |
+| 10 | LOW | if all four models failed, the 24x7 runner retried silently forever | one Telegram alert per 6h with the log filename | code path added, compile OK |
+| 11 | LOW | `AGENTS.md` still said model "Big Pickle" and "run with bash" | corrected to the Kilo per-chat layer and the `shell` tool | grep clean |
+| 12 | INFO | stale test scripts and old `_resume*.html` files were sitting in `state/tmp` | removed | directory clean |
+
+### Residual risks (not changed on purpose)
+
+| Risk | Why it is still there | Suggested fix |
+|---|---|---|
+| shell deny is pattern-based, not a sandbox | OpenCode docs warn that shell runs with the host user's authority; a command that avoids the blocked words can still reach a secret | move `secrets/` outside the project root, or tighten NTFS ACLs on `secrets/` and `.env` |
+| fabrication guard checks skills, numbers and names, not free-text claims | a non-numeric invented claim in a bullet could pass | add a token-overlap warning against `resume/master.json`; keep it a warning to avoid false blocks |
+| `max_per_cycle`, `apollo.reveal_emails`, `targeting.require_personalization`, `one_ask_only` | present in config but not enforced in code | wire them into `cold_email.py` or remove them so config does not promise more than it does |
+| watcher marks a job seen before the location filter | changing criteria later will not re-open old filtered jobs | store `seen` only for queued jobs, or add a `--rescan` flag |
+| tracker limit check is not atomic | two chats can both pass the last slot and exceed a cap by 1-2 | reserve a row at check time, or accept the small overrun |
+| `.env` values are not stripped of inline comments | `DRY_RUN=1  # note` would read as a non-1 value | strip ` #` in `load_env` (safe now, current file has no inline comments) |
+
+### Round 3 verification summary
+
+- read canary: `Permission denied: read`
+- shell canary containing `secrets`: `Permission denied: shell`
+- normal shell command in the same run: executed correctly
+- concurrent resume renders: both correct
+- bad resume output path: refused
+- legacy tracker CSV: no crash
+- cold-email double-send paths: both blocked
+- all scripts compile
+
+### Still blocked on you (unchanged)
+
+| Need | Why |
+|---|---|
+| Apollo API key | people search + verified emails |
+| Gmail send OAuth (`google_auth.py --send`) | actually sending cold email |
+| Resume PDF | portal profile setup on all 11 portals |
+| CGPA: 9.25 or 9.27 | three files disagree by 0.02 |
+| Portfolio URL | empty in profile + answers |
+| Email templates | locked until you send your own |
+
+

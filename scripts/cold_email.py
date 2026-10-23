@@ -310,8 +310,9 @@ def cmd_queue(a) -> int:
         return 2
     with FileLock(LOCK):
         rs = rows_unlocked()
-        if any(r["email"].lower() == email and r["status"] in
-               ("queued", "draft_ready", "sent", "replied") for r in rs):
+        if any(r["email"].lower() == email and
+               (r["status"] in ("queued", "draft_ready", "sent", "replied") or r.get("sent_at"))
+               for r in rs):
             print(f"DUPLICATE: {email} already queued/sent")
             return 4
         rid = add_row(rs, company=a.company, name=a.name or "", title=a.title or "",
@@ -514,6 +515,11 @@ def cmd_mark(a) -> int:
         row = next((r for r in rs if r["id"] == a.id), None)
         if not row:
             print(f"NOT_FOUND: {a.id}")
+            return 2
+        BLOCKED = {("sent", "queued"), ("sent", "draft_ready"),
+                   ("replied", "queued"), ("replied", "draft_ready")}
+        if (row["status"], a.status) in BLOCKED or (row.get("sent_at") and a.status in ("queued", "draft_ready")):
+            print(f"BAD_TRANSITION: {row['status']} -> {a.status} would allow a second email to the same address")
             return 2
         row["status"] = a.status
         save_unlocked(rs)

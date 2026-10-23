@@ -54,6 +54,15 @@ targeting:
     - support@
     - noreply@
     - no-reply@
+    - hr@
+    - careers@
+    - jobs@
+    - recruitment@
+    - talent@
+    - contact@
+    - hello@
+    - admin@
+    - sales@
   require_personalization: true   # every email must mention the company product or a recent update
 
 # --- copy rules (checked before a draft is accepted) ---

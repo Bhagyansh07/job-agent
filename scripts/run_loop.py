@@ -151,4 +151,20 @@ while True:
                 time.sleep(1.5)
                 continue
             break
+    if not success:
+        # one alert per 6h across all chats, so a dead gateway never goes unnoticed
+        guard = ROOT / "state" / ".last_fail_alert"
+        try:
+            stale = (not guard.exists()) or (time.time() - guard.stat().st_mtime > 6 * 3600)
+        except OSError:
+            stale = True
+        if stale:
+            try:
+                subprocess.run([sys.executable, str(ROOT / "scripts" / "notify.py"),
+                                f"[{chat}] all models failed this cycle. Quota or gateway problem. "
+                                f"Log: state/logs/{logfile.name}"],
+                               cwd=ROOT, timeout=60)
+                guard.write_text(dt.datetime.now(IST).isoformat(timespec="seconds"), encoding="utf-8")
+            except Exception as e:
+                print(f"[{chat}] failure alert could not be sent: {e}")
     time.sleep(max(60, min_cycle - (time.time() - start)))

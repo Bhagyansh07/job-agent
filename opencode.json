@@ -1,37 +1,37 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "kilo/laguna-s",
-  "permission": {
-    "*": "allow",
-    "read": {
-      "*": "allow",
-      ".env": "deny",
-      "*.env": "deny",
-      "*.env.*": "deny",
-      "*.env.example": "allow",
-      "secrets/**": "deny",
-      "browser-profiles/**": "deny"
-    },
-    "edit": {
-      "*": "allow",
-      ".env": "deny",
-      "*.env": "deny",
-      "*.env.*": "deny",
-      "secrets/**": "deny",
-      "browser-profiles/**": "deny"
-    },
-    "webfetch": "allow",
-    "shell": {
-      "rm *": "deny",
-      "del *": "deny",
-      "rmdir *": "deny",
-      "format *": "deny",
-      "shutdown *": "deny",
-      "git push *": "deny",
-      "git reset --hard *": "deny",
-      "git clean *": "deny"
-    }
-  },
+  "permissions": [
+    { "action": "*", "resource": "*", "effect": "allow" },
+
+    { "action": "read", "resource": "*.env", "effect": "deny" },
+    { "action": "read", "resource": "*.env.*", "effect": "deny" },
+    { "action": "read", "resource": "secrets/*", "effect": "deny" },
+    { "action": "read", "resource": "browser-profiles/*", "effect": "deny" },
+    { "action": "read", "resource": "*.env.example", "effect": "allow" },
+
+    { "action": "edit", "resource": "*.env", "effect": "deny" },
+    { "action": "edit", "resource": "*.env.*", "effect": "deny" },
+    { "action": "edit", "resource": "secrets/*", "effect": "deny" },
+    { "action": "edit", "resource": "browser-profiles/*", "effect": "deny" },
+
+    { "action": "shell", "resource": "*secrets*", "effect": "deny" },
+    { "action": "shell", "resource": "*.env", "effect": "deny" },
+    { "action": "shell", "resource": "*.env.*", "effect": "deny" },
+    { "action": "shell", "resource": "*browser-profiles*", "effect": "deny" },
+    { "action": "shell", "resource": "rm *", "effect": "deny" },
+    { "action": "shell", "resource": "del *", "effect": "deny" },
+    { "action": "shell", "resource": "rmdir *", "effect": "deny" },
+    { "action": "shell", "resource": "Remove-Item *", "effect": "deny" },
+    { "action": "shell", "resource": "erase *", "effect": "deny" },
+    { "action": "shell", "resource": "format *", "effect": "deny" },
+    { "action": "shell", "resource": "shutdown *", "effect": "deny" },
+    { "action": "shell", "resource": "git push *", "effect": "deny" },
+    { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
+    { "action": "shell", "resource": "git clean *", "effect": "deny" },
+
+    { "action": "webfetch", "resource": "*", "effect": "allow" }
+  ],
   "mcp": {
     "pw_chat1": {
       "type": "local",

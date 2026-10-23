@@ -26,7 +26,8 @@ def rows():
     if not F.exists():
         return []
     with F.open(encoding="utf-8", newline="") as f:
-        return list(csv.DictReader(f))
+        # normalise: an older CSV without every column must not crash the runner
+        return [{c: (r.get(c) or "") for c in COLS} for r in csv.DictReader(f)]
 
 
 def norm(s):

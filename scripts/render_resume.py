@@ -100,7 +100,7 @@ def _html(t):
 
     c = t.get("contact", {})
     parts = []
-    for k in ("phone", "email", "linkedin", "location"):
+    for k in ("phone", "email", "linkedin", "github", "portfolio", "location"):
         v = c.get(k)
         if not v:
             continue
@@ -172,18 +172,28 @@ def _find_chrome():
 
 
 def render(t, out):
-    tmp = ROOT / "state" / "tmp" / "_resume.html"
-    tmp.parent.mkdir(parents=True, exist_ok=True)
+    import os, tempfile
+    tmpdir = ROOT / "state" / "tmp"
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix="_resume_", suffix=".html", dir=tmpdir)
+    os.close(fd)
+    tmp = pathlib.Path(tmp_name)
     tmp.write_text(_html(t), encoding="utf-8")
     out = pathlib.Path(out).resolve()
+    if out.suffix.lower() != ".pdf":
+        raise SystemExit("OUTPUT_MUST_BE_PDF")
+    try:
+        out.relative_to(ROOT)
+    except ValueError:
+        raise SystemExit("OUTPUT_MUST_BE_INSIDE_PROJECT")
     out.parent.mkdir(parents=True, exist_ok=True)
     if out.exists():
         out.unlink()
     chrome = _find_chrome()
     if not chrome:
         raise RuntimeError("No Chrome/Edge found for HTML->PDF")
-    import tempfile, shutil
-    udd = tempfile.mkdtemp(prefix="chrome_pdf_")
+    import tempfile as _tf, shutil
+    udd = _tf.mkdtemp(prefix="chrome_pdf_")
     try:
         subprocess.run(
             [chrome, "--headless", "--disable-gpu", "--no-sandbox",
@@ -192,6 +202,7 @@ def render(t, out):
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90)
     finally:
         shutil.rmtree(udd, ignore_errors=True)
+        tmp.unlink(missing_ok=True)
     if not out.exists():
         raise RuntimeError("Chrome did not produce the PDF")
 

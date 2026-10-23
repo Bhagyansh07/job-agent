@@ -54,7 +54,10 @@ def main():
             q += f" from:{args.sender}"
         for m in fetch(svc, q, 10):
             text = hdr(m, "Subject") + "\n" + walk_text(m["payload"])
-            hit = re.search(r"(?i)(otp|code|verification|passcode|pin)[^\d]{0,60}(\d{4,8})", text) or re.search(r"\b(\d{6})\b", text)
+            hit = re.search(r"(?i)(otp|code|verification|passcode|pin)[^\d]{0,60}(\d{4,8})", text)
+            if not hit and args.sender:
+                # only trust a bare 6 digit code when the sender filter is set
+                hit = re.search(r"\b(\d{6})\b", text)
             if hit:
                 print(hit.group(hit.lastindex))
                 return
