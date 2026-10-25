@@ -11,11 +11,11 @@ Flow:
 1. Read `state/referral_queue.txt` (company | role | job url). For each company search LinkedIn People: "<company> software engineer", "<company> talent acquisition", "<company> JECRC". Prefer people with the company's current role, active profiles, 2nd/3rd degree.
 2. Open the profile, read headline + about (30-60 s). `outreach.py exists --url` => skip if known.
 3. Send connection request. LinkedIn free accounts have a small monthly quota of personalised notes: if the "Add a note" option is blocked/limited, send WITHOUT a note and put the pitch in the DM after acceptance. Note (<= 280 chars), professional English, e.g.:
-   "Hi <Name>, I'm a final-year CS student (B.Tech, JECRC) with React/Node projects. I applied for <Role> at <Company> and would love to connect and learn about the team. Thank you!"
+   "Hi <Name>, I'm a final-year CS student (B.Tech, JECRC) with Java/SQL and GCP projects. I applied for <Role> at <Company> and would love to connect and learn about the team. Thank you!"
 4. Log: `outreach.py add --name .. --title .. --company .. --url .. --type recruiter|engineer|alumni|founder`
 5. Each cycle: open "My Network -> Manage/Invitations sent" or profile status; for accepted ones run `outreach.py update --url .. --status accepted`.
 6. DM (only if accepted), adapt tone to the person, 4-6 lines, ONE clear ask, mention the exact job link, never pushy, never fake claims:
-   - Engineer: "Hi <Name>, thanks for connecting. I applied for <Role> (<link>) at <Company> - my React/Node project <X> is relevant to <their product/stack>. If you feel I'm a fit, would you be open to referring me or pointing me to the right person? Happy to share my resume. Thank you for your time."
+   - Engineer: "Hi <Name>, thanks for connecting. I applied for <Role> (<link>) at <Company> - my Java/SQL and GCP project <X> is relevant to <their product/stack>. If you feel I'm a fit, would you be open to referring me or pointing me to the right person? Happy to share my resume. Thank you for your time."
    - Recruiter: shorter, role + availability (immediate) + resume offer.
    - Alumni: mention JECRC first, ask for 5 minutes of guidance / referral if suitable.
    Log: `outreach.py update --url .. --status dm_sent`
