@@ -18,20 +18,78 @@ pauses = [ROOT / "state" / "PAUSE", ROOT / "state" / f"PAUSE_{chat}"]
 log_dir = ROOT / "state" / "logs"
 pw = f"pw_{chat}"
 
+# Removed "overloaded" - appears in backend JD content and causes false failures
 RATE_MARKERS = ("too many requests", "rate limit", "ratelimit", "freeusagelimiterror",
                 "sign up for free to continue", "quota exceeded", "insufficient credits",
-                "no available model", "model not found", "overloaded")
+                "no available model", "model not found")
 # bare "429" is a job id as often as it is an HTTP status, so require context
 RATE_RE = re.compile(r"(?:status|code|error|http)[^\n]{0,16}\b429\b|\b429\b[^\n]{0,16}(?:too many|rate limit)")
 
 
-def looks_failed(rc: int, content: str) -> bool:
-    return rc != 0 or rate_limited(content)
+def _is_error_line(line: str) -> bool:
+    """Check if a log line looks like a system error, not JD content."""
+    low = line.lower().strip()
+    indicators = ("error:", "error ", "exception:", "traceback", "fatal:", "failed:",
+                  "denied", "blocked", "banned", "unavailable", "sign up", "quota",
+                  "rate limit", "too many", "overloaded", "insufficient", "no available")
+    return any(ind in low for ind in indicators)
 
 
 def rate_limited(content: str) -> bool:
-    low = content.lower()
-    return bool(RATE_RE.search(low)) or any(m in low for m in RATE_MARKERS)
+    """Only check the last 40 lines for rate limit markers in error context.
+    JD content mentioning 'rate limiting' or 'overloaded' no longer causes false failures."""
+    lines = content.splitlines()[-40:]
+    for line in lines:
+        if not _is_error_line(line):
+            continue
+        low = line.lower()
+        if any(m in low for m in RATE_MARKERS):
+            return True
+        if RATE_RE.search(low):
+            return True
+    return False
+
+
+def looks_failed(rc: int, content: str) -> bool:
+    if rc != 0:
+        return True
+    return rate_limited(content)
+
+
+def _run_model(model, prompt, logfile, timeout):
+    """Run opencode with timeout. Returns (rc, content).
+    On timeout, kills the entire process tree (opencode + Chrome/MCP children)."""
+    f = logfile.open("w", encoding="utf-8")
+    try:
+        proc = subprocess.Popen(
+            [exe, "run", "-m", model, prompt],
+            cwd=ROOT,
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+    except Exception as e:
+        f.close()
+        return -1, str(e)
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        # Kill entire process tree - opencode + Chrome + MCP children
+        try:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                          capture_output=True, timeout=10)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            pass
+    f.close()
+    content = logfile.read_text(encoding="utf-8", errors="replace") if logfile.exists() else ""
+    return proc.returncode, content
 
 
 def clean_old_logs():
@@ -88,7 +146,10 @@ while True:
         except Exception as e:
             print("daily_report failed:", e)
     if chat == "chat3":
-        subprocess.run([sys.executable, str(ROOT / "scripts" / "watcher.py")])
+        try:
+            subprocess.run([sys.executable, str(ROOT / "scripts" / "watcher.py")], timeout=300)
+        except Exception as e:
+            print("watcher failed:", e)
     now = dt.datetime.now(IST)
     if chat == "chat1":
         chain = ["kilo/laguna-s", "kilo/laguna-xs", "kilo/flint", "kilo/dots3"]
@@ -108,45 +169,37 @@ while True:
     for idx, model in enumerate(chain):
         if success:
             break
+        print(f"[{chat}] trying model: {model}")
         try:
-            print(f"[{chat}] trying model: {model}")
-            with logfile.open("w", encoding="utf-8") as f:
-                res = subprocess.run([exe, "run", "-m", model, prompt], cwd=ROOT,
-                                     stdout=f, stderr=subprocess.STDOUT, timeout=MODEL_TIMEOUT)
-            try:
-                content = logfile.read_text(encoding="utf-8", errors="replace")
-                lines = content.splitlines()
-                print("\n".join(lines[-30:]))
-                if not looks_failed(res.returncode, content):
-                    success = True
-                    break
-                if rate_limited(content) and idx == 0:
-                    print(f"[{chat}] rate limit detected, retrying same model after 1.5s")
-                    time.sleep(1.5)
-                    with logfile.open("w", encoding="utf-8") as f:
-                        res = subprocess.run([exe, "run", "-m", model, prompt], cwd=ROOT,
-                                             stdout=f, stderr=subprocess.STDOUT, timeout=MODEL_TIMEOUT)
-                    content = logfile.read_text(encoding="utf-8", errors="replace")
-                    lines = content.splitlines()
-                    print("\n".join(lines[-30:]))
-                    if not looks_failed(res.returncode, content):
-                        success = True
-                        break
-                if looks_failed(res.returncode, content):
-                    if idx < len(chain) - 1:
-                        print(f"[{chat}] switching to fallback: {chain[idx+1]} after 1.5s")
-                        time.sleep(1.5)
-                    continue
-                success = True
-                break
-            except Exception as e:
-                print(f"[{chat}] log read failed: {e}")
-                if idx < len(chain) - 1:
-                    time.sleep(1.5)
-                    continue
-                break
+            rc, content = _run_model(model, prompt, logfile, MODEL_TIMEOUT)
         except Exception as e:
             print(f"[{chat}] run failed with {model}: {e}")
+            if idx < len(chain) - 1:
+                time.sleep(1.5)
+                continue
+            break
+        try:
+            lines = content.splitlines() if content else []
+            print("\n".join(lines[-30:]))
+            if not looks_failed(rc, content):
+                success = True
+                break
+            # Retry same model once if rate-limited on first attempt
+            if rate_limited(content) and idx == 0:
+                print(f"[{chat}] rate limit detected, retrying same model after 1.5s")
+                time.sleep(1.5)
+                rc, content = _run_model(model, prompt, logfile, MODEL_TIMEOUT)
+                lines = content.splitlines() if content else []
+                print("\n".join(lines[-30:]))
+                if not looks_failed(rc, content):
+                    success = True
+                    break
+            if looks_failed(rc, content) and idx < len(chain) - 1:
+                print(f"[{chat}] switching to fallback: {chain[idx+1]} after 1.5s")
+                time.sleep(1.5)
+                continue
+        except Exception as e:
+            print(f"[{chat}] post-run error: {e}")
             if idx < len(chain) - 1:
                 time.sleep(1.5)
                 continue
@@ -160,9 +213,10 @@ while True:
             stale = True
         if stale:
             try:
-                subprocess.run([sys.executable, str(ROOT / "scripts" / "notify.py"),
-                                f"[{chat}] all models failed this cycle. Quota or gateway problem. "
-                                f"Log: state/logs/{logfile.name}"],
+                subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
+                                f"{chat}: all 4 models failed this cycle. Quota or gateway problem. "
+                                f"Log: state/logs/{logfile.name}",
+                                "--key", "models_failed", "--urgent", "--cooldown", "360"],
                                cwd=ROOT, timeout=60)
                 guard.write_text(dt.datetime.now(IST).isoformat(timespec="seconds"), encoding="utf-8")
             except Exception as e:

@@ -1,9 +1,13 @@
 # Telegram protocol
+- **Urgent/blocked**: `python scripts/alert.py "..." --key <topic> --urgent`  (blocks work until he acts; deduped; written to `state/needs_you.md`)
+- **Resolve**: `python scripts/alert.py --resolve <topic>` after he replies/does it
 - Info only (audits, issues): `python scripts/notify.py "..."`  (keep under ~15 lines)
 - Question: `python scripts/ask.py "..." --options "A,B"`  -> prints the answer or TIMEOUT. Default timeout 900 s.
-- Login needed: ask.py "Login chahiye: <portal>. Browser (<pw_chatX>) me login kar do, phir Done dabao." --options "Done,Skip portal today"
-  On Done: reload the portal and verify logged in. On Skip/TIMEOUT: skip that portal this cycle.
-- CAPTCHA: ask.py "CAPTCHA aaya on <portal>, browser me solve karo." --options "Solved,Skip portal today"
-- Unknown form question: ask.py "<portal> | <company> | <question text>" (free text reply). Save reply to state/learned_answers.json as {"question": "...", "answer": "..."}.
-- Approval for 60-79 jobs: see job_matching.md. Put company, role, match %, 2-line reason and the link in ONE message.
+- Login needed: `ask.py` "Login chahiye: <portal>. Browser (<pw_chatX>) me login kar do, phir Done dabao." --options "Done,Skip portal today" AND `alert.py` "<portal> login chahiye | pw_<chat> me khud login karke 'Done' bhejo" --key "<portal>_login" --urgent. On Done: reload the portal and verify logged in. On Skip/TIMEOUT: skip that portal this cycle. After resolving, run `alert.py --resolve <portal>_login`.
+- CAPTCHA: `ask.py` "CAPTCHA aaya on <portal>, browser me solve karo." --options "Solved,Skip portal today"; also `alert.py` "CAPTCHA on <portal> | solve in browser, then tell me" --key "<portal>_captcha" --urgent
+- Unknown form question: `ask.py "<portal> | <company> | <question text>"` (free text). Save reply to state/learned_answers.json as {"question": "...", "answer": "..."}. If blocked > 2 min, alert with --urgent.
+- Approval for 60-79 jobs: ONE numbered message via `ask.py` (see job_matching.md). Also `alert.py` "Approve 60-79 jobs for <portal> | reply with numbers/All/None" --key "<portal>_approve" --urgent
+- Ban/warning/restriction/CAPTCHA loop/account restricted: `alert.py` "<portal> WARNING: <details> | stop this portal today" --key "<portal>_ban" --urgent
+- Missing key/resume/OAuth/credentials: `alert.py` "<need> chahiye | <exact path or action>" --key "<need>_setup" --urgent
+- Step failed 3 times: `alert.py` "<portal> blocked at <step> after 3 tries | <what to fix>" --key "<portal>_<step>" --urgent
 - Never send secrets (passwords, tokens, OTP) on Telegram.

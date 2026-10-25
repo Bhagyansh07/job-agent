@@ -7,7 +7,7 @@ Reads tracker/applications.csv, counts today's rows by status and by portal,
 average match score, and total rows. Adds the Google Sheet link if GOOGLE_SHEET_ID is set."""
 import argparse, csv, os
 from collections import Counter
-from common import ROOT, today
+from common import ROOT, today, is_dry
 
 
 def rows():
@@ -32,6 +32,8 @@ def build():
     avg = (sum(scores) / len(scores)) if scores else None
 
     lines = [f"Aaj ka report - {today()}"]
+    if is_dry():
+        lines.append("MODE: DRY_RUN=1 - kuch submit nahi hua, sirf decisions log hue")
     lines.append(f"Total rows in sheet: {len(rs)}")
     lines.append("Aaj ke decisions: " + (", ".join(f"{k}={v}" for k, v in by_status.items()) if by_status else "kuch nahi"))
     lines.append("Portal wise: " + (", ".join(f"{k}={v}" for k, v in by_portal.items()) if by_portal else "kuch nahi"))

@@ -69,7 +69,8 @@ def jobs_for(c):
                             loc = "; ".join(str(x) for x in v)
                         elif v:
                             loc = str(v)
-            out.append((j.get("title", ""), loc, j.get("absolute_url", ""), j.get("updated_at")))
+            # Use created_at (posting date) instead of updated_at (last-edit) for accurate age
+            out.append((j.get("title", ""), loc, j.get("absolute_url", ""), j.get("created_at") or j.get("updated_at")))
     elif ats == "lever":
         for j in get(f"https://api.lever.co/v0/postings/{tok}?mode=json"):
             out.append((j.get("text", ""), (j.get("categories") or {}).get("location", ""), j.get("hostedUrl", ""), j.get("createdAt")))
@@ -83,6 +84,11 @@ def main():
     p = cfg("profile.yaml")
     inc = [x.lower() for x in p["roles_include"]]
     exc = [x.lower() for x in p["roles_exclude_title"]]
+    # Word-boundary regex for exclude list (avoids "hr" matching "chrome"/"threading")
+    exc_re = re.compile(r'\b(' + '|'.join(re.escape(x.strip()) for x in exc) + r')\b', re.I)
+    # Seniority level detection: SDE/SE 2+, Engineer III+
+    _lvl_re = re.compile(r'\b(?:sde|se|sr\.?|software engineer|engineer|level)\s*([ivx\d]+)\b', re.I)
+    _roman = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6}
     max_age = p["posting_age"]["stretch_max"]
     try:
         wl = cfg("watchlist.yaml").get("companies") or []
@@ -106,7 +112,19 @@ def main():
                 seen.add(key)
                 seen_list.append(key)
                 tl = title.lower()
-                if not any(i in tl for i in inc) or any(x in tl for x in exc):
+                # Include: substring match is fine (e.g. "sde 2" matches "sde")
+                if not any(i in tl for i in inc):
+                    continue
+                # Exclude: word boundary match (avoids "hr" in "chrome" / "threading")
+                if exc_re.search(tl):
+                    continue
+                # Exclude senior levels: SDE 2+, SE 2+, Engineer III+
+                m = _lvl_re.search(title)
+                if m:
+                    lvl = m.group(1).lower()
+                    if (lvl in _roman and _roman[lvl] >= 2) or (lvl.isdigit() and int(lvl) >= 2):
+                        continue
+                if re.search(r'\bIII\b|\bIV\b|\bV\b|\bVI\b', title):
                     continue
                 if not loc_ok(loc, p):
                     continue

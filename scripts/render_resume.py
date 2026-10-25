@@ -223,3 +223,12 @@ if __name__ == "__main__":
     out.parent.mkdir(parents=True, exist_ok=True)
     render(tailored, out)
     print(f"OK {out}")
+    try:
+        from pypdf import PdfReader
+        pages = len(PdfReader(str(out.resolve())).pages)
+        if pages > 1:
+            print(f"WARNING_PAGES {pages}: target is 1 page for a fresher resume")
+        else:
+            print("PAGES 1")
+    except Exception:
+        pass

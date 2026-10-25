@@ -10,7 +10,7 @@ DRY_RUN=1 in .env -> statuses get a dry_ prefix, nothing is applied, sheet sync 
 """
 import argparse, csv, os, sys
 from collections import Counter
-from common import ROOT, today, now, cfg, FileLock, safe_cell
+from common import ROOT, today, now, cfg, FileLock, safe_cell, is_dry
 
 F = ROOT / "tracker" / "applications.csv"
 LOCK = ROOT / "state" / "tracker.lock"
@@ -19,7 +19,7 @@ APPLIED = ("applied_auto", "applied_approved", "applied")
 
 
 def dry_run():
-    return os.environ.get("DRY_RUN") == "1"
+    return is_dry()
 
 
 def rows():
@@ -34,8 +34,27 @@ def norm(s):
     return " ".join((s or "").lower().split())
 
 
+_TRACKING_PARAMS = {"utm_source", "utm_medium", "utm_campaign", "utm_content",
+                    "utm_term", "ref", "source", "gclid", "fbclid", "mc_cid", "mc_eid"}
+
+
 def base(url):
-    return (url or "").split("?")[0].rstrip("/")
+    """Strip only utm/tracking params; keep job-identifying params like jk, currentJobId, gh_jid."""
+    if not url:
+        return ""
+    try:
+        from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+        parsed = urlparse(url)
+        if not parsed.query:
+            return urlunparse((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", "", ""))
+        qs = parse_qs(parsed.query, keep_blank_values=True)
+        keep = {k: v for k, v in qs.items() if k.lower() not in _TRACKING_PARAMS}
+        if not keep:
+            return urlunparse((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", "", ""))
+        new_qs = urlencode(keep, doseq=True)
+        return urlunparse((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", new_qs, ""))
+    except Exception:
+        return (url or "").split("?")[0].rstrip("/")
 
 
 def exists(url=None, company=None, role=None):

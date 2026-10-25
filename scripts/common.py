@@ -28,6 +28,11 @@ def cfg(name):
     return yaml.safe_load((ROOT / "config" / name).read_text(encoding="utf-8")) or {}
 
 
+def is_dry():
+    """One definition of DRY_RUN for every script (1/true/yes/on all work)."""
+    return os.environ.get("DRY_RUN", "0").strip().lower() in ("1", "true", "yes", "on")
+
+
 def today():
     return dt.date.today().isoformat()
 

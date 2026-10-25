@@ -82,25 +82,37 @@ def main():
             except Exception:  # corrupted/missing cache must not stop the cycle
                 seen = set()
             lines = []
+            pending_seen = set()  # Mails to mark as seen (only after successful send)
             for m in fetch(svc, q, 40):
                 if m["id"] in seen:
                     continue
+                pending_seen.add(m["id"])
                 subj, frm = hdr(m, "Subject"), hdr(m, "From")
                 if KEYWORDS.search(subj) or KEYWORDS.search(m.get("snippet", "")):
                     lines.append(f"- {frm} | {subj} | {m.get('snippet', '')[:140]}")
-                seen.add(m["id"])
-            SEEN.parent.mkdir(exist_ok=True)
-            tmp = SEEN.with_suffix(".tmp")
-            tmp.write_text(json.dumps(sorted(seen)[-2000:]), encoding="utf-8")
-            tmp.replace(SEEN)
             if not lines:
+                # No matching mails, update seen cache
+                SEEN.parent.mkdir(exist_ok=True)
+                tmp = SEEN.with_suffix(".tmp")
+                tmp.write_text(json.dumps(sorted(seen | pending_seen)[-2000:]), encoding="utf-8")
+                tmp.replace(SEEN)
                 print("NONE")
                 return 0
             text = "Recruiter / application mails (reply khud karna):\n" + "\n".join(lines)
             print(text)
             if args.notify:
                 from notify import send
-                send(text)
+                try:
+                    send(text)
+                except Exception as e:
+                    print(f"NOTIFY_FAILED: {e}", file=sys.stderr)
+                    # Do NOT save pending_seen - matching mails stay unseen for retry
+                    return 0
+            # Telegram send succeeded - now save seen IDs
+            SEEN.parent.mkdir(exist_ok=True)
+            tmp = SEEN.with_suffix(".tmp")
+            tmp.write_text(json.dumps(sorted(seen | pending_seen)[-2000:]), encoding="utf-8")
+            tmp.replace(SEEN)
     except Exception as exc:  # noqa: BLE001
         print(f"GMAIL_ERROR: {type(exc).__name__}: {str(exc)[:160]}")
         return 0

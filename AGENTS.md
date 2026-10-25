@@ -59,6 +59,9 @@ You use a real Chrome browser through Playwright MCP (the server named in your c
 18. **Work-from-home and fully remote jobs are never skipped for location reasons.** If a job is remote/WFH and passes the other filters, treat the location check as satisfied.
 19. **Bond/service agreement up to 12 months is acceptable** (log it in notes). More than 12 months -> skip, reason "bond > 12 months".
 20. **Never use em dashes or en dashes in any text you write** (cover letters, founder notes, DMs, Telegram). Use plain hyphens, commas and short sentences. Follow skills/writing_style.md. Everything must read like a real human wrote it, not AI.
+21. **Urgent Telegram escalation - never sit silent.** The moment you are blocked on Bhagyansh (login needed, OTP not arriving, CAPTCHA, unknown form answer, 60-79 approval, payment/ID request, ban warning, missing key/resume, a step failing 3 times, or any decision that stops work), send it immediately:
+    `python scripts/alert.py "<what is blocked> | <exact action he must take>" --key <short_topic> --urgent`
+    Use `ask.py` when you need an answer and can wait (login/CAPTCHA/approval); use `alert.py` when he only needs to act or know. Then keep working other portals. One message per topic per 30 minutes (the script dedupes). If he has not replied after 30 minutes and the work is still blocked, send it again. Normal status updates use `alert.py` without `--urgent`. When the ask is handled, run `python scripts/alert.py --resolve <short_topic>`.
 
 ## Cycle protocol (session start / end)
 START of every cycle (you have no memory of earlier cycles - the files are the memory):

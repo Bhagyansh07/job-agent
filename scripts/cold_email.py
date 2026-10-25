@@ -42,13 +42,16 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
-from common import ROOT, cfg, today, safe_cell
+from common import ROOT, cfg, today, safe_cell, is_dry
 
 IST = ZoneInfo("Asia/Kolkata")
 F = ROOT / "tracker" / "cold_emails.csv"
 LOCK = ROOT / "state" / "cold_email.lock"
 CFG = ROOT / "config" / "cold_email.yaml"
 DRAFTS = ROOT / "tracker" / "email_drafts"
+ACTIVITY = ROOT / "state" / "cold_email_activity.jsonl"
+ACTIVITY_LOCK = ROOT / "state" / "cold_email_activity.lock"
+CYCLE_WINDOW_MIN = 15
 COLS = ["id", "queued_date", "company", "contact_name", "contact_title", "email", "source", "notes",
         "status", "subject", "sent_at", "last_sent_at", "apollo_id", "linkedin"]
 SAFE_FIELDS = {"company", "contact_name", "contact_title", "notes"}
@@ -177,7 +180,34 @@ def hours_ok() -> bool:
 
 
 def dry() -> bool:
-    return os.environ.get("DRY_RUN", "0").strip() == "1"
+    return is_dry()
+
+
+def cycle_quota() -> tuple[bool, str]:
+    """max_per_cycle = at most N drafts+sends inside one rolling 15-minute window."""
+    _, w = limits()
+    n, cutoff = 0, now_ist().timestamp() - CYCLE_WINDOW_MIN * 60
+    try:
+        if ACTIVITY.exists():
+            for line in ACTIVITY.read_text(encoding="utf-8").splitlines()[-200:]:
+                try:
+                    if dt.datetime.fromisoformat(json.loads(line)["ts"]).timestamp() >= cutoff:
+                        n += 1
+                except Exception:
+                    continue
+    except Exception:
+        n = 0
+    if n >= w["max_cycle"]:
+        return False, f"CYCLE_LIMIT {n}/{w['max_cycle']} in last {CYCLE_WINDOW_MIN} min"
+    return True, ""
+
+
+def record_activity(kind: str, rid: str) -> None:
+    with FileLock(ACTIVITY_LOCK):
+        ACTIVITY.parent.mkdir(parents=True, exist_ok=True)
+        with ACTIVITY.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"ts": now_ist().isoformat(timespec="seconds"),
+                                "kind": kind, "id": rid}) + "\n")
 
 
 # ---------------------------------------------------------------- apollo
@@ -222,6 +252,9 @@ def cmd_apollo(a) -> int:
     ac = cc().get("apollo", {}) or {}
     if not ac.get("enabled", True):
         print("APOLLO_DISABLED in config/cold_email.yaml")
+        return 2
+    if a.reveal and not ac.get("reveal_emails", True):
+        print("APOLLO_REVEAL_DISABLED: set apollo.reveal_emails: true in config/cold_email.yaml")
         return 2
 
     titles = [a.role] if a.role else list(ac.get("person_titles") or [])
@@ -278,14 +311,26 @@ def cmd_apollo(a) -> int:
               f"{rec['email'] or '(no email - use --reveal, costs 1 credit)'} | {rec['linkedin']}")
 
     if a.queue:
+        t = cc().get("targeting", {}) or {}
+        never = [str(p).lower() for p in (t.get("never_email") or [])]
+        dom_cap = int(t.get("max_per_domain", 1))
+
+        def active(r):
+            return r["status"] in ("queued", "draft_ready", "sent", "replied") or bool(r.get("sent_at"))
+
         with FileLock(LOCK):
             rs = rows_unlocked()
             for rec in out:
                 addr = rec["email"]
                 if not addr or not EMAIL_RE.match(addr):
                     continue
-                if any(r["email"].lower() == addr and r["status"] in
-                       ("queued", "draft_ready", "sent", "replied") for r in rs):
+                if any(addr.startswith(p) for p in never):
+                    continue
+                if any(r["email"].lower() == addr and active(r) for r in rs):
+                    continue
+                domain = addr.split("@")[-1]
+                if sum(1 for r in rs
+                       if r["email"].lower().endswith("@" + domain) and active(r)) >= dom_cap:
                     continue
                 add_row(rs, company=rec["company"], name=rec["name"], title=rec["title"],
                         email=addr, source="apollo", notes=rec["domain"],
@@ -393,10 +438,15 @@ def cmd_draft(a) -> int:
             if not ((first and first in low) or (comp and comp in low)):
                 print("PERSONALIZATION_MISSING: mention the contact's first name or the company")
                 return 2
+        ok, why = cycle_quota()
+        if not ok:
+            print(why)
+            return 3
         DRAFTS.mkdir(parents=True, exist_ok=True)
         (DRAFTS / f"{a.id}.txt").write_text(body, encoding="utf-8")
         row["status"], row["subject"] = "draft_ready", subject
         save_unlocked(rs)
+    record_activity("draft", a.id)
     print(f"DRAFT_READY {a.id} ({words} words, subject {len(subject)} chars)")
     return 0
 
@@ -456,6 +506,10 @@ def cmd_send(a) -> int:
         if dry():
             print(f"DRY_RUN_HELD {a.id} -> {row['email']} (would send, limit {n + 1}/{limit})")
             return 5
+        ok, why = cycle_quota()
+        if not ok:
+            print(why)
+            return 3
         subject, body = row["subject"], body_file.read_text(encoding="utf-8")
         try:
             from google_auth import creds_send
@@ -486,6 +540,7 @@ def cmd_send(a) -> int:
         row["sent_at"] = now_ist().isoformat(timespec="seconds")
         row["last_sent_at"] = row["sent_at"]
         save_unlocked(rs)
+    record_activity("send", a.id)
     print(f"SENT {a.id} -> {row['email']} ({n + 1}/{limit} today)")
     return 0
 
@@ -502,7 +557,7 @@ def cmd_count(a) -> int:
 
 
 def cmd_resolve(a) -> int:
-    """Hunter.io if HUNTER_API_KEY is set, else clearly-marked UNVERIFIED pattern guesses."""
+    """Hunter.io if HUNTER_API_KEY is set. No pattern guessing: generic inboxes are policy-blocked."""
     domain = (a.domain or "").strip().lower().lstrip("@")
     if "." not in domain:
         print(f"INVALID_DOMAIN: {a.domain}")
