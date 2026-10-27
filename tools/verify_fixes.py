@@ -100,8 +100,8 @@ check("tracker: BOM csv keeps date (limits work)", bool(bom_rows) and bom_rows[0
       str(bom_rows[:1]))
 for rel in ("tracker/applications.csv", "tracker/outreach.csv", "tracker/cold_emails.csv"):
     f = ROOT / rel
-    if f.exists():
-        check(f"{rel}: no utf-8 BOM", not f.read_bytes().startswith(b"\xef\xbb\xbf"))
+    check(f"{rel}: no utf-8 BOM (when it exists)",
+          (not f.exists()) or not f.read_bytes().startswith(b"\xef\xbb\xbf"))
 
 # hand-edited JSON (.env, master.json, opencode.json) must survive a BOM too: json.loads rejects it
 for name in ("common.py", "render_resume.py", "health_check.py"):
