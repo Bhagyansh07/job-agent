@@ -49,6 +49,36 @@ check("health.json written", health.get("status") in ("OK", "WARN", "FAIL"), hea
 rl = (ROOT / "scripts" / "run_loop.py").read_text(encoding="utf-8")
 check("run_loop: health check wired", "run_health_check()" in rl)
 check("run_loop: recovery alert after failure", "models_recovered" in rl)
+check("run_loop: orphan browser cleanup wired", "def reap_orphans" in rl and "reap_orphans()" in rl
+      and "ParentProcessId" in rl)
+check("run_loop: orphan cleanup scoped to own chat", "browser-profiles[/\\\\]' + $chat" in rl)
+
+# ---------------- 2b. browser MCP config (fan/CPU + tool exposure) ----------------
+oc = json.loads((ROOT / "opencode.json").read_text(encoding="utf-8"))
+srv = (oc.get("mcp") or {}).get("servers") or {}
+check("opencode.json: V2 mcp.servers shape", isinstance(srv, dict) and len(srv) == 3,
+      f"{len(srv)} server(s)")
+check("opencode.json: codemode off (tools reach the model)",
+      all(s.get("codemode") is False for s in srv.values()) if srv else False)
+check("opencode.json: idle-timeout on every server",
+      all("--idle-timeout" in (s.get("command") or []) for s in srv.values()) if srv else False)
+check("opencode.json: idle-timeout 10 min",
+      all("600000" in [str(c) for c in (s.get("command") or [])] for s in srv.values()) if srv else False)
+check("opencode.json: npx -y (no install prompt on fresh clone)",
+      all(all(x in [str(c) for c in (s.get("command") or [])] for x in ("npx", "-y")) for s in srv.values())
+      if srv else False)
+pdirs = []
+for s in srv.values():
+    cmd = [str(c) for c in (s.get("command") or [])]
+    if "--user-data-dir" in cmd:
+        pdirs.append(cmd[cmd.index("--user-data-dir") + 1].replace("\\", "/"))
+check("opencode.json: one profile per chat", len(pdirs) == 3 and len(set(pdirs)) == 3, ", ".join(pdirs))
+hc = (ROOT / "scripts" / "health_check.py").read_text(encoding="utf-8")
+check("health_check: validates mcp servers", "def check_mcp_servers" in hc and "codemode" in hc)
+
+sa = (ROOT / "start_all.ps1").read_text(encoding="utf-8")
+check("start_all: -Chats parameter", "[string[]]$Chats" in sa and "-Chats" in (ROOT / "README.md").read_text(encoding="utf-8"))
+
 
 # ---------------- 3. MEDIUM: tracker single snapshot ----------------
 tr = (ROOT / "scripts" / "tracker.py").read_text(encoding="utf-8")

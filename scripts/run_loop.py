@@ -92,6 +92,45 @@ def _run_model(model, prompt, logfile, timeout):
     return proc.returncode, content
 
 
+# Kill only THIS chat's browser leftovers whose parent process is already gone.
+# The Playwright MCP servers are shared per project location and are owned by the
+# background opencode service, so touching a live server would break the other chats.
+ORPHAN_PS = r"""
+$chat = '__CHAT__'
+$procs = @(Get-CimInstance Win32_Process -Filter "Name='chrome.exe' OR Name='node.exe'" |
+    Where-Object { $_.CommandLine -and ($_.CommandLine -match ('browser-profiles[/\\]' + $chat + '(\s|$|")')) })
+if ($procs.Count -eq 0) { return }
+$alive = @{}
+Get-CimInstance Win32_Process | ForEach-Object { $alive[[string]$_.ProcessId] = $true }
+foreach ($p in $procs) {
+    $ppid = [string]$p.ParentProcessId
+    if ($ppid -eq '0' -or -not $alive.ContainsKey($ppid)) {
+        Write-Output ("orphan " + $p.ProcessId + " " + $p.Name)
+        & taskkill.exe /F /T /PID $p.ProcessId 2>&1 | Out-Null
+    }
+}
+"""
+
+
+def reap_orphans():
+    """Clean up a crashed cycle's Chrome before starting a new one.
+
+    A killed/timed-out cycle can leave Chrome holding browser-profiles/<chat>, and the
+    next launch then fails silently. Only processes with a dead parent are reaped."""
+    if os.name != "nt":
+        return
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-Command",
+                            ORPHAN_PS.replace("__CHAT__", chat)],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=60)
+        killed = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.startswith("orphan ")]
+        if killed:
+            print(f"[{chat}] reaped {len(killed)} orphan browser process(es): " + "; ".join(killed[:6]))
+    except Exception as e:
+        print(f"[{chat}] orphan cleanup skipped: {e}")
+
+
 def clean_old_logs():
     if not log_dir.exists():
         return
@@ -179,6 +218,7 @@ while True:
         except Exception as e:
             print("watcher failed:", e)
     run_health_check()
+    reap_orphans()
     now = dt.datetime.now(IST)
     if chat == "chat1":
         chain = ["kilo/laguna-s", "kilo/laguna-xs", "kilo/flint", "kilo/dots3"]

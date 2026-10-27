@@ -3,7 +3,7 @@
 Scope: the live project at `C:\Users\bhagy\Downloads\job-agent`: scripts, configs, docs, resume,
 watcher throughput, tracker state, renderer, health check.
 
-Verdict: the infrastructure works. All 18 scripts compile, the 51-check regression suite passes,
+Verdict: the infrastructure works. All 18 scripts compile, the 61-check regression suite passes,
 the renderer produces a 1-page ATS-readable PDF, Telegram is reachable, and 16/16 watchlist boards
 answer live with at least one junior engineering role in India. Nothing has been auto-submitted yet
 because `DRY_RUN=1` (by design).
@@ -31,6 +31,19 @@ because `DRY_RUN=1` (by design).
 | 17 | LOW | README told you to `git clone` a repo that returns 404. | Replaced with zip-based setup for a second laptop. |
 | 18 | LOW | One-off audit scripts sat in the project root and in `tools/local/`. | Removed before packaging; only `tools/verify_fixes.py` ships. |
 
+## Fixed on 2026-10-28 (fan/CPU + browser tools round)
+
+| # | Severity | Problem | Fix |
+|---|---|---|---|
+| 19 | CRITICAL | With Code Mode on, MCP tools were never exposed to the model in `opencode run`. The agent asked for `tools.pw_chat1.browser_navigate`, got "No tool named ... is currently available", and silently fell back to `webfetch`. Every "browser" action in a headless cycle was fake. | `codemode: false` on all three MCP servers. Verified: `pw_chat1_browser_navigate` now returns the real page title, Chrome opens, `browser_close` closes it. |
+| 20 | HIGH | Headed Chrome never closed. `--idle-timeout` was not set (Playwright MCP defaults to *never* for headed browsers), so three logged-in Chromes stayed up 24x7 with their profiles locked. That was the fan/CPU cause. | `--idle-timeout 600000` (10 min, so a slow resume-tailoring step cannot kill a half-filled form) on every server. Verified over raw MCP JSON-RPC at 60s and 300s: nav -> 8 chrome procs, idle -> 0, next nav -> browser relaunches and navigates. Logins survive (profile on disk). Cycle gap is 15-30 min, so Chrome is still shut between cycles. |
+| 21 | HIGH | `opencode.json` used the legacy `mcp.<name>` shape. V2 loads it but ignores `enabled`, so a chat could not be switched off and edits were ambiguous. | Rewritten to the documented V2 `mcp.servers` shape with `disabled` supported; `npx -y` added so a fresh clone never waits on an install prompt. |
+| 22 | HIGH | A crashed or timed-out cycle left Chrome holding `browser-profiles/<chat>`, and the next cycle then failed to launch. | `run_loop.py` calls `reap_orphans()` at cycle start: it kills only this chat's chrome/node processes whose parent is gone. Live MCP servers (owned by the background service) are never touched. Tested with a real orphan and with the live servers. |
+| 23 | MEDIUM | Both an idle-timeout test and a wrong hypothesis wasted hours: `experimental.location_idle_timeout` looked like it should unload MCP services. It does not (proven, then removed). Also "3 chats = 9 browser stacks" was wrong - 3 chats share 3 MCP servers; Chrome forks ~8 processes per profile. | Documented in README. Nothing left in config that pretends to do something. |
+| 24 | MEDIUM | `start_all.ps1` always started all three chats; there was no supported way to run fewer loops on a weak laptop. | `-Chats chat1` / `-Chats chat1,chat2` parameter (default all three), with validation and a clear message. |
+| 25 | MEDIUM | `health_check.py` only counted MCP server names, so it said OK while `codemode` hid the tools and no idle-timeout was set. | Now checks the V2 shape, `codemode: false` on every server, `--idle-timeout` presence, and that the three `--user-data-dir` values are distinct. |
+| 26 | LOW | `stop_all.ps1` left three Chromes and three MCP node servers running, so "stopping" the agent did not stop the CPU load. | `-Browsers` switch closes this project's Chrome and Playwright MCP servers (matched on `browser-profiles` / `playwright*mcp` in the command line, so your personal Chrome is untouched). Profiles stay on disk. |
+
 ## Still open (by design, needs you)
 
 - **`DRY_RUN=1` in `.env`.** Nothing is submitted. Flip to `0` after watching 5-10 applications.
@@ -43,7 +56,8 @@ because `DRY_RUN=1` (by design).
   role + seniority + location + freshness. That is the market, not a bug: most Indian product boards are
   hiring senior right now. Volume has to come from Naukri, LinkedIn, Internshala, Unstop, Instahyre.
   To widen it, raise `posting_age.hard_skip_over` (14) and `stretch_max` (14) in `config/profile.yaml`.
-- **No git history.** The project is local-only; there is no remote repository.
+- **Repo is private.** `https://github.com/Bhagyansh07/job-agent` (`main`). A fresh clone runs in dry-run mode
+  until you create `.env`; secrets, browser profiles, tracker CSVs and the queue are gitignored.
 - **Portal ToS.** Naukri / LinkedIn / Indeed / Instahyre do not allow automation. Caps, human delays and
   the 08:00-23:30 window reduce the risk; they do not remove it. `opencode.json` permissions are a
   best-effort guard, not a sandbox.

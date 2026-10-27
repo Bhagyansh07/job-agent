@@ -13,6 +13,7 @@ har portal ke baad Telegram pe audit report dete hain, recruiter mails/messages 
    - Us bot ko apne account se ek message bhejo (warna bot reply nahi kar payega).
    - Browser me `https://api.telegram.org/bot<TOKEN>/getUpdates` kholo -> `result[0].message.chat.id` = TELEGRAM_CHAT_ID.
    - `.env.example` ko `.env` banao aur TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID bharo.
+  (`copy` sirf pehli baar. Agar `.env` already hai to usko overwrite mat karo, usme tumhari keys hain.)
    - Setup ke baad BotFather se `/revoke` karke naya token bana lena (purana token kabhi kisi ko mat dena).
 5. Google (Gmail OTP + Sheet tracker): console.cloud.google.com -> naya project -> Gmail API + Google Sheets API enable ->
    OAuth client (Desktop app) -> `credentials.json` download -> `secrets/credentials.json`.
@@ -31,7 +32,7 @@ har portal ke baad Telegram pe audit report dete hain, recruiter mails/messages 
    python scripts/health_check.py        # 0 fail hona chahiye, warn padh lo
    python scripts/watcher.py             # queue/new_jobs.jsonl me jobs aani chahiye
    python scripts/probe_ats.py --check   # watchlist ke saare boards live hain?
-   python tools/verify_fixes.py          # 51-check regression suite (sab PASS hone chahiye)
+   python tools/verify_fixes.py          # 61-check regression suite (sab PASS hone chahiye)
    ```
 
 ## Naye laptop pe setup (GitHub ya zip se)
@@ -42,7 +43,7 @@ Backup/share ke liye zip: `job-agent-v5-FINAL.zip` (usme `.env`, `secrets/`, `br
 git clone https://github.com/Bhagyansh07/job-agent.git   # ya zip extract karo
 cd job-agent
 pip install -r requirements.txt
-copy .env.example .env        # phir .env me Telegram keys bharo
+copy .env.example .env        # sirf tab jab .env pehle se na ho, warna keys overwrite ho jayengi
 ```
 `.env`, `secrets/`, `browser-profiles/`, `tracker/*.csv`, `queue/`, `output/` repo aur zip dono me nahi aate, isliye
 naye laptop pe unhe dobara banana padega:
@@ -65,9 +66,31 @@ charger laga rehne do.
 Logon pe khud start karne ke liye:
 ```
 powershell -ExecutionPolicy Bypass -File .\register_startup.ps1   # once
-powershell -ExecutionPolicy Bypass -File .\start_all.ps1           # abhi start
+powershell -ExecutionPolicy Bypass -File .\start_all.ps1           # abhi start (teeno)
+powershell -ExecutionPolicy Bypass -File .\start_all.ps1 -Chats chat1        # sirf ek chat
+powershell -ExecutionPolicy Bypass -File .\start_all.ps1 -Chats chat1,chat2  # do chats
 powershell -ExecutionPolicy Bypass -File .\stop_all.ps1            # sab band (child processes bhi)
+powershell -ExecutionPolicy Bypass -File .\stop_all.ps1 -Browsers # loops + is project ke Chrome/MCP bhi band
 ```
+
+## Fan / CPU (laptop garam hone ka asli reason)
+Pehle lagta tha ki 3 chats = 9 browser stacks. Aisa nahi hai. MCP servers project folder ke saath share hote hain,
+isliye teeno chat milkar **3 Chrome** use karte hain, 9 nahi (Chrome khud ek profile ke liye 8 processes banata hai,
+isliye Task Manager me count zyada dikhta hai). Asli problem ye thi ki headed Chrome cycle khatam hone ke baad bhi
+kabhi band nahi hota tha, to teen browser 24x7 chalte rehte the.
+
+Ab fix hai (`opencode.json`):
+- `--idle-timeout 600000`: 10 minute tak koi browser tool call na aaye to Chrome band, next tool call pe wapas khul
+  jati hai. Profile disk pe rehta hai, isliye logins/CAPTCHA session nahi jaate. 10 min isliye ki cycle ke beech me
+  (resume tailor karte waqt) Chrome galti se band na ho; cycles ke beech ka gap 15-30 min hai, to Chrome phir bhi
+  har cycle ke baad band ho jati hai. Form bharte waqt agar kabhi page reset dikhe to value badha do (`1800000` = 30 min).
+- `codemode: false`: isse browser tools model ko directly milte hain. Iske bina `opencode run` me MCP tools model tak
+  pahunchte hi nahi the aur agent chupchaap webfetch pe fall back ho jata tha.
+- `scripts/run_loop.py` har cycle start pe sirf **apne chat ke dead** Chrome/node processes reap karta hai (jinka
+  parent mar chuka hai). Live MCP server ko haath nahi lagta, warna baaki chats toot jayengi.
+
+Kam machine chahiye to `-Chats chat1` se ek hi loop chalao (coverage kam hoga, par kaam chalta rahega), ya
+Windows power plan `Balanced` kar do (`powercfg /setactive SCHEME_BALANCED`). Abhi `Turbo` active hai.
 
 ## Control switches (state/ folder)
 - **Pause**: `state/PAUSE` file banao -> teeno chats ruk jayenge (300s me check karte hain, file hatao to chalu).
@@ -107,7 +130,8 @@ powershell -ExecutionPolicy Bypass -File .\stop_all.ps1            # sab band (c
 - `opencode.json` me V2 `permissions` array hai (unattended chalne ke liye allow, phir `.env`/`secrets/`/`browser-profiles/`
   par read/edit/shell deny, aur `grep` poora block taaki secrets search na ho sake). Ye best-effort guard hai, sandbox nahi;
   residual risk `AUDIT.md` me likha hai.
-- Playwright MCP pehli baar `npx` se download hota hai; Chrome windows visible rehti hain (login/CAPTCHA ke liye).
+- Playwright MCP pehli baar `npx -y` se download hota hai; Chrome windows visible rehti hain (login/CAPTCHA ke liye) aur
+  idle 5 min baad apne aap band ho jati hain (logins profile me safe rehte hain).
 - `config/watchlist.yaml` me nayi company add karne se pehle `python scripts/probe_ats.py --discover "<Company>"` chalao.
   Galat token 404 deta hai aur watcher use chupchaap skip karta hai (2026-10-27 se health_check aur watcher dead boards alert karte hain).
 - Files: tracker/applications.csv (+Sheet), tracker/outreach.csv, tracker/cold_emails.csv, output/resumes/*.pdf, queue/, state/.

@@ -227,6 +227,68 @@ def check_pause() -> None:
         ok("pause", "none")
 
 
+def check_mcp_servers() -> None:
+    """The browser lives in the MCP config, so a wrong shape there = agent cannot browse.
+
+    Three things bit us for real (see AUDIT.md):
+      - V2 reads `mcp.servers`, not `mcp.<name>` (legacy keys still load but are ignored by
+        `opencode mcp list` style tooling and are easy to mis-edit).
+      - with Code Mode on, MCP tools never reached the model in `opencode run`, so the agent
+        silently fell back to webfetch. `codemode: false` is what makes browser tools usable.
+      - a headed Chrome never closes on its own. `--idle-timeout` closes it when a cycle is
+        idle, which is the actual fix for the fan/CPU noise.
+    """
+    cfg_path = ROOT / "opencode.json"
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        fail("opencode.json", f"{type(exc).__name__} -> run_loop cannot start chats")
+        return
+    mcp = cfg.get("mcp") or {}
+    servers = mcp.get("servers") if isinstance(mcp.get("servers"), dict) else {
+        k: v for k, v in mcp.items() if isinstance(v, dict) and "command" in v}
+    if not servers:
+        fail("opencode.json", "no mcp servers -> no browser, agent cannot apply")
+        return
+    ok("mcp servers", f"{len(servers)}: " + ", ".join(sorted(servers)))
+
+    no_idle, codemode_on, dirs, broken = [], [], {}, []
+    for name, srv in sorted(servers.items()):
+        cmd = srv.get("command") or []
+        cmd = [str(c) for c in cmd]
+        if not cmd:
+            broken.append(name)
+            continue
+        if "--idle-timeout" not in cmd:
+            no_idle.append(name)
+        if srv.get("codemode") is not False:
+            codemode_on.append(name)
+        if "--user-data-dir" in cmd:
+            i = cmd.index("--user-data-dir")
+            if i + 1 < len(cmd):
+                dirs.setdefault(cmd[i + 1].replace("\\", "/"), []).append(name)
+
+    if broken:
+        fail("mcp command", "empty command for: " + ", ".join(broken))
+    if codemode_on:
+        fail("mcp codemode", "not false for: " + ", ".join(codemode_on)
+             + " -> browser tools stay hidden from the model, agent falls back to webfetch")
+    else:
+        ok("mcp codemode", "off everywhere (browser tools reach the model directly)")
+    if no_idle:
+        warn("mcp idle-timeout", "missing on: " + ", ".join(no_idle)
+             + " -> headed Chrome stays open after a cycle and eats CPU/RAM")
+    else:
+        ok("mcp idle-timeout", "set on every server (Chrome closes when idle)")
+    shared = {d: names for d, names in dirs.items() if len(names) > 1}
+    if shared:
+        fail("mcp profiles", "same --user-data-dir for multiple chats: " + str(shared))
+    if len(dirs) != len(servers):
+        warn("mcp profiles", f"{len(dirs)} user-data-dir(s) for {len(servers)} servers")
+    elif not shared:
+        ok("mcp profiles", "separate profile per chat (" + ", ".join(sorted(dirs)) + ")")
+
+
 def check_runner() -> None:
     """run_loop.py needs the opencode CLI and the Playwright MCP servers. Neither was checked."""
     exe = shutil.which("opencode")
@@ -239,16 +301,8 @@ def check_runner() -> None:
             ok("opencode CLI", v[0] if v else "present")
         except Exception as exc:  # noqa: BLE001
             warn("opencode CLI", f"present but --version failed: {type(exc).__name__}")
-    cfg_path = ROOT / "opencode.json"
-    try:
-        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-        servers = sorted((cfg.get("mcp") or {}).keys())
-        if not servers:
-            fail("opencode.json", "no mcp servers -> no browser, agent cannot apply")
-        else:
-            ok("opencode.json", f"{len(servers)} mcp servers: " + ", ".join(servers))
-    except Exception as exc:  # noqa: BLE001
-        fail("opencode.json", f"{type(exc).__name__} -> run_loop cannot start chats")
+    check_mcp_servers()
+
 
 
 def check_pipeline() -> None:

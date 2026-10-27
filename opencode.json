@@ -259,41 +259,52 @@
     }
   ],
   "mcp": {
-    "pw_chat1": {
-      "type": "local",
-      "command": [
-        "npx",
-        "@playwright/mcp@0.0.83",
-        "--browser",
-        "chrome",
-        "--user-data-dir",
-        "./browser-profiles/chat1"
-      ],
-      "enabled": true
-    },
-    "pw_chat2": {
-      "type": "local",
-      "command": [
-        "npx",
-        "@playwright/mcp@0.0.83",
-        "--browser",
-        "chrome",
-        "--user-data-dir",
-        "./browser-profiles/chat2"
-      ],
-      "enabled": true
-    },
-    "pw_chat3": {
-      "type": "local",
-      "command": [
-        "npx",
-        "@playwright/mcp@0.0.83",
-        "--browser",
-        "chrome",
-        "--user-data-dir",
-        "./browser-profiles/chat3"
-      ],
-      "enabled": true
+    "servers": {
+      "pw_chat1": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "@playwright/mcp@0.0.83",
+          "--browser",
+          "chrome",
+          "--user-data-dir",
+          "./browser-profiles/chat1",
+          "--idle-timeout",
+          "600000"
+        ],
+        "codemode": false
+      },
+      "pw_chat2": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "@playwright/mcp@0.0.83",
+          "--browser",
+          "chrome",
+          "--user-data-dir",
+          "./browser-profiles/chat2",
+          "--idle-timeout",
+          "600000"
+        ],
+        "codemode": false
+      },
+      "pw_chat3": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "@playwright/mcp@0.0.83",
+          "--browser",
+          "chrome",
+          "--user-data-dir",
+          "./browser-profiles/chat3",
+          "--idle-timeout",
+          "600000"
+        ],
+        "codemode": false
+      }
     }
   }
 }
