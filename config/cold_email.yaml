@@ -10,6 +10,15 @@ warmup_week1: 5        # days 1-7 counted from the first ever send
 warmup_week2: 15       # days 8-14
 min_gap_hours: 4       # no bursts between two sends
 max_per_cycle: 3       # how many emails one agent cycle may draft or send
+#
+# How the three limits interact (read this before changing a number):
+# - max_per_cycle is a rolling 15-minute window, counted across drafts AND sends.
+#   So 3 per 15 min is not 12/hour in practice: min_gap_hours gates actual sends.
+# - min_gap_hours: 4 -> at most ~6 sends in a 24h day no matter what daily_cap says.
+#   A 25/day cap is only reachable if you lower min_gap_hours (2h = ~12/day).
+# - daily_cap/warm-up caps are counted from the first send ever (`sent_at` rows).
+# Recommended: leave these as they are for a new sender. Raise daily_cap only after
+# week 3 and only if bounce/reply rates look healthy.
 
 # --- Apollo.io lead discovery ---
 # Free plan DOES have API access, but a free account must be registered with a

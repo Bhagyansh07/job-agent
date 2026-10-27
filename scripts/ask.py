@@ -47,8 +47,8 @@ while time.time() < deadline:
         break
     except FileExistsError:
         try:
-            if time.time() - lock.stat().st_mtime > a.timeout + 120:
-                lock.unlink()  # stale lock
+            if time.time() - lock.stat().st_mtime > a.timeout + 30:
+                lock.unlink()  # stale lock (ask died without cleaning up)
         except Exception:
             pass
         time.sleep(3)

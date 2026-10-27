@@ -1,22 +1,22 @@
 {
   "name": "Bhagyansh Chandel",
-  "headline": "B.Tech CSE Undergraduate | Web Development, Data Quality, Google Cloud",
+  "headline": "B.Tech CSE (2027) | Java, SQL, Web Development | Google Cloud",
   "contact": { "email": "bhagyanshchandel3567@gmail.com", "phone": "+91-6268228869", "location": "Jaipur, Rajasthan", "linkedin": "linkedin.com/in/bhagyanshchandel", "github": "github.com/Bhagyansh07", "portfolio": "" },
-  "summary": "Detail-oriented Computer Science undergraduate (CGPA: 9.27/10) with hands-on experience in data quality assurance, structured documentation, and process-driven work. Maintained zero data-integrity issues across 100+ test records through rigorous validation and auditing. Google Cloud Associate Cloud Engineer certified, fluent in English, proficient in Microsoft Office, and experienced coordinating with 60+ stakeholders as Class Representative. Seeking to bring strong accuracy, SOP adherence, and quality-focused execution to Amazon's ML data operations.",
+  "summary": "Final-year B.Tech Computer Science student at JECRC University, Jaipur (CGPA 9.27/10, graduating 2027). Builds full-stack web applications with Java, JSP/Servlets, SQL and JavaScript, and works hard on testing edge cases and keeping data consistent. Trained on the Google Cloud Associate Cloud Engineer track. Comfortable documenting work, coordinating with people and picking up new tools quickly. Looking for an entry-level software engineering role where I can ship and maintain real features.",
   "skills": {
     "Data Quality & Accuracy": "Data validation, quality audits, error-checking, ground-truth data integrity",
     "Productivity Tools": "Microsoft Office (Word, Excel, PowerPoint), Google Workspace",
     "Process & Compliance": "SOP adherence, documentation, structured guideline execution, confidentiality handling",
     "Communication": "Fluent English (spoken & written), status reporting, stakeholder coordination",
-    "Technical Foundation": "Java, C++, SQL, Python (Basic), MySQL — Schema Design & Normalization (3NF)",
-    "Cloud": "Google Cloud Platform — Compute Engine, Cloud Storage, BigQuery, IAM, VPC Networking",
+    "Technical Foundation": "Java, C++, SQL, Python (Basic), MySQL | Schema Design & Normalization (3NF)",
+    "Cloud": "Google Cloud Platform | Compute Engine, Cloud Storage, BigQuery, IAM, VPC Networking",
     "Tools": "Git, GitHub, VS Code, NetBeans IDE"
   },
   "experience": [
     {
       "title": "Class Representative",
       "company": "JECRC University",
-      "dates": "Jul 2023 – Present",
+      "dates": "Jul 2023 - Present",
       "bullets": [
         "Coordinated and communicated academic updates between 60+ students and faculty, consistently meeting SLA-style turnaround for query resolution.",
         "Followed established institutional procedures for exam notifications and event scheduling, ensuring 100% on-time, accurate communication.",
@@ -26,9 +26,9 @@
   ],
   "projects": [
     {
-      "name": "Smart Commute — Ride Pooling & Booking Web Application",
+      "name": "Smart Commute | Ride Pooling & Booking Web Application",
       "tech": "Java, JSP, Servlet, HTML5, CSS3, MySQL",
-      "dates": "Jan 2026 – Apr 2026",
+      "dates": "Jan 2026 - Apr 2026",
       "bullets": [
         "Performed rigorous data validation and quality checks on a normalized MySQL database (3NF) spanning 5+ related tables, maintaining zero data-integrity issues across 100+ test records.",
         "Followed structured development guidelines and MVC documentation standards across all modules, reducing bug-fix time by ~30% through consistent, process-driven execution.",
@@ -37,9 +37,9 @@
       ]
     },
     {
-      "name": "PathToSDE — Interactive System Design Learning Roadmap",
+      "name": "PathToSDE | Interactive System Design Learning Roadmap",
       "tech": "HTML5, CSS3, JavaScript, Local Storage",
-      "dates": "Jan 2024 – Mar 2024",
+      "dates": "Jan 2024 - Mar 2024",
       "bullets": [
         "Organized and structured 25+ System Design topics into a clear, verified taxonomy, improving content accuracy and discoverability for end users.",
         "Tested and verified 100% accuracy of client-side progress tracking and state persistence across sessions through repeated quality checks.",
@@ -48,16 +48,17 @@
     }
   ],
   "education": [
-    { "degree": "B.Tech in Computer Science", "school": "JECRC University, Jaipur, Rajasthan", "dates": "Jul 2023 – Jun 2027", "score": "CGPA: 9.27 / 10.0" },
-    { "degree": "Class XII (CBSE)", "school": "Kendriya Vidyalaya, Chhatarpur, Madhya Pradesh", "dates": "2021 – 2022", "score": "" },
-    { "degree": "Class X (CBSE)", "school": "Kendriya Vidyalaya, Chhatarpur, Madhya Pradesh", "dates": "2019 – 2020", "score": "" }
+    { "degree": "B.Tech in Computer Science", "school": "JECRC University, Jaipur, Rajasthan", "dates": "Jul 2023 - Jun 2027", "score": "CGPA: 9.27 / 10.0" },
+    { "degree": "Class XII (CBSE)", "school": "Kendriya Vidyalaya, Chhatarpur, Madhya Pradesh", "dates": "2021 - 2022", "score": "" },
+    { "degree": "Class X (CBSE)", "school": "Kendriya Vidyalaya, Chhatarpur, Madhya Pradesh", "dates": "2019 - 2020", "score": "" }
   ],
   "certifications": [
-    "Google Cloud Associate Cloud Engineer — Foundations (2025–2026): Compute Engine, Cloud Storage, BigQuery, IAM, VPC Networking"
+    "Google Cloud Associate Cloud Engineer: Foundations (2025-2026): Compute Engine, Cloud Storage, BigQuery, IAM, VPC Networking"
   ],
   "achievements": [
-    "Languages: English (Fluent), Hindi (Native) | Tools: MS Office Suite, Google Workspace",
+    "Languages: English (Fluent), Hindi (Native)",
+    "Tools: MS Office Suite, Google Workspace, Git, GitHub, VS Code",
     "Available for flexible schedules including weekends/nights as required",
-    "Interests: Data Quality & Analytics, Software Engineering, Cloud Computing"
+    "Interests: Software Engineering, Data Quality and Analytics, Cloud Computing"
   ]
 }

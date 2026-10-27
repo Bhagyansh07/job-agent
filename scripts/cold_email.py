@@ -184,17 +184,19 @@ def dry() -> bool:
 
 
 def cycle_quota() -> tuple[bool, str]:
-    """max_per_cycle = at most N drafts+sends inside one rolling 15-minute window."""
+    """max_per_cycle = at most N drafts+sends inside one rolling 15-minute window.
+    Reads every activity line (an old 200-line slice let a burst slip past the cap)."""
     _, w = limits()
     n, cutoff = 0, now_ist().timestamp() - CYCLE_WINDOW_MIN * 60
     try:
         if ACTIVITY.exists():
-            for line in ACTIVITY.read_text(encoding="utf-8").splitlines()[-200:]:
-                try:
-                    if dt.datetime.fromisoformat(json.loads(line)["ts"]).timestamp() >= cutoff:
-                        n += 1
-                except Exception:
-                    continue
+            with ACTIVITY.open(encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    try:
+                        if dt.datetime.fromisoformat(json.loads(line)["ts"]).timestamp() >= cutoff:
+                            n += 1
+                    except Exception:
+                        continue
     except Exception:
         n = 0
     if n >= w["max_cycle"]:

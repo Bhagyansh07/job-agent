@@ -12,7 +12,6 @@ from common import ROOT, today, cfg, FileLock, safe_cell, is_dry
 F = ROOT / "tracker" / "outreach.csv"
 LOCK = ROOT / "state" / "outreach.lock"
 COLS = ["date", "name", "title", "company", "url", "type", "status", "status_date", "dm_date", "notes", "sent_date"]
-_HELD = False   # True while main() holds the lock for a whole read-modify-write
 
 
 def rows():
@@ -35,11 +34,8 @@ def _write(rs):
 
 def save(rs):
     F.parent.mkdir(exist_ok=True)
-    if _HELD:
+    with FileLock(LOCK):
         _write(rs)
-    else:
-        with FileLock(LOCK):
-            _write(rs)
 
 
 def main():
@@ -58,68 +54,62 @@ def main():
     e = sub.add_parser("exists")
     e.add_argument("--url", required=True)
     args = ap.parse_args()
-    global _HELD
-    if args.cmd in ("add", "update"):
-        # hold the lock across read AND write, so two chats can never overwrite each other's row
-        import atexit
-        _lk = FileLock(LOCK)
-        _lk.__enter__()
-        _HELD = True
-        atexit.register(lambda: _lk.__exit__(None, None, None))
-    rs = rows()
     o = cfg("profile.yaml")["outreach"]
+    SENT_NEW = ("requested", "dm_sent", "followup_sent")
 
     if args.cmd == "add":
-        if any(r["url"] == args.url for r in rs):
-            print("ALREADY")
-            return
-        status = args.status or "requested"
-        if is_dry() and status in ("requested", "dm_sent", "followup_sent"):
-            status = "draft_ready"
-            print("DRY_RUN forced draft_ready (nothing was sent)")
-        rs.append({"date": today(), "name": args.name, "title": args.title, "company": args.company, "url": args.url,
-                   "type": args.type, "status": status, "status_date": today(), "dm_date": "", "notes": args.notes,
-                   "sent_date": today() if status in ("requested", "dm_sent", "followup_sent") else ""})
-        save(rs)
+        with FileLock(LOCK):          # read AND write under one lock: no lost rows between chats
+            rs = rows()
+            if any(r["url"] == args.url for r in rs):
+                print("ALREADY")
+                return
+            status = args.status or "requested"
+            if is_dry() and status in SENT_NEW:
+                status = "draft_ready"
+                print("DRY_RUN forced draft_ready (nothing was sent)")
+            rs.append({"date": today(), "name": args.name, "title": args.title, "company": args.company,
+                       "url": args.url, "type": args.type, "status": status, "status_date": today(),
+                       "dm_date": "", "notes": args.notes,
+                       "sent_date": today() if status in SENT_NEW else ""})
+            _write(rs)
         print("logged")
     elif args.cmd == "update":
         dry = is_dry()
-        if dry and args.status in ("requested", "dm_sent", "followup_sent"):
+        if dry and args.status in SENT_NEW:
             print(f"DRY_RUN_BLOCKED: cannot mark {args.status} while DRY_RUN=1 (nothing was sent)")
             sys.exit(5)
-        found = False
-        for r in rs:
-            if r["url"] == args.url:
-                found = True
-                r["status"], r["status_date"] = args.status, today()
-                if args.status in ("requested", "dm_sent", "followup_sent") and not r.get("sent_date"):
-                    r["sent_date"] = today()      # the real send day, used for the daily cap
-                if args.status == "dm_sent":
-                    r["dm_date"] = today()
-                if args.notes:
-                    r["notes"] = args.notes
-        if not found:
-            print(f"NOT_FOUND: {args.url}")
-            sys.exit(2)
-        save(rs)
+        with FileLock(LOCK):
+            rs = rows()
+            found = False
+            for r in rs:
+                if r["url"] == args.url:
+                    found = True
+                    r["status"], r["status_date"] = args.status, today()
+                    if args.status in SENT_NEW and not r.get("sent_date"):
+                        r["sent_date"] = today()      # the real send day, used for the daily cap
+                    if args.status == "dm_sent":
+                        r["dm_date"] = today()
+                    if args.notes:
+                        r["notes"] = args.notes
+            if not found:
+                print(f"NOT_FOUND: {args.url}")
+                sys.exit(2)
+            _write(rs)
         print("updated")
     elif args.cmd == "count":
-        SENT_NEW = ("requested", "dm_sent", "followup_sent")  # only count actual sends/connections sent today
+        rs = rows()
         # cap counts the day a request was actually SENT (sent_date); legacy rows fall back to the add date
-        n = sum(1 for r in rs if r.get("sent_date") == today() and r.get("status") in SENT_NEW)
-        if n == 0:
-            # fallback for legacy rows
-            n = sum(1 for r in rs if (not r.get("sent_date")) and r["date"] == today() and r.get("status") in SENT_NEW)
+        n = sum(1 for r in rs if (r.get("sent_date") or r["date"]) == today() and r.get("status") in SENT_NEW)
         lim = o["connection_requests_per_day"]
         drafts = sum(1 for r in rs if r["status"] == "draft_ready")
         print(f"{'OK' if n < lim else 'LIMIT'} connection_requests {n}/{lim}"
               + (f" (drafts waiting: {drafts})" if drafts else ""))
         sys.exit(0 if n < lim else 3)
     elif args.cmd == "exists":
-        print("YES" if any(r["url"] == args.url for r in rs) else "NO")
+        print("YES" if any(r["url"] == args.url for r in rows()) else "NO")
     elif args.cmd == "due":
         days = o["followup_after_days"]
-        for r in rs:
+        for r in rows():
             if r["status"] == "accepted" and not r["dm_date"]:
                 print(f"DM_NOW | {r['name']} | {r['title']} @ {r['company']} | {r['url']}")
             if r["status"] == "dm_sent" and r["dm_date"]:

@@ -1,7 +1,7 @@
 # CHAT 3 - Career pages (ATS), YC, remote boards, drives, discovery   (browser: pw_chat3)
 Start of cycle: follow the cycle protocol in AGENTS.md (read BLOCKED/LEARNINGS/RUN_LOG; at end append RUN_LOG).
 Runs 24x7 (these sources have weak bot-detection). The runner executes scripts/watcher.py before each cycle (every ~30 min).
-Playbooks: skills/portals/career_pages_ats.md, yc_waas.md, remote_boards.md, internshala_unstop.md, hn_and_startup_sources.md + skills/discovery.md, apply_flow.md, job_matching.md, resume_tailoring.md
+Playbooks: skills/portals/career_pages.md + career_pages_ats.md, yc_waas.md, remote_boards.md, internshala_unstop.md, unstop.md, hn_and_startup_sources.md + skills/discovery.md, apply_flow.md, job_matching.md, resume_tailoring.md
 
 Remote/WFH jobs are always welcome - never skip a job just because it is work-from-home or fully remote.
 
@@ -12,6 +12,11 @@ Remote/WFH jobs are always welcome - never skip a job just because it is work-fr
 - Do NOT advance the cursor to the next rotation portal until the current portal's per-portal cap is hit
   OR no fresh eligible jobs remain on it. Only then write ((cursor+1) % 3) back to `state/chat3_cursor.txt`.
 - If its check says LIMIT (cap hit), that counts as its cap being reached, so you may advance.
+- **Anti-starvation (mandatory):** keep `state/chat3_career_streak.txt` (integer, missing = 0).
+  Increment it on every cycle spent on career_pages (including discovery). When it reaches 3,
+  the NEXT cycle must be a rotation portal (yc_waas / remote_boards / unstop) even if the queue
+  still has items, then reset the streak to 0. Without this, a full queue starves the other three
+  sources forever.
 
 ## Context saving (keep the session small)
 - Read job descriptions with TEXT EXTRACTION, not full snapshots: use browser evaluate on

@@ -79,7 +79,18 @@ def sync_sheet(row):
             insertDataOption="INSERT_ROWS", body={"values": [[row[c] for c in COLS]]},
         ).execute()
     except Exception as e:
-        print("sheet sync skipped:", e, file=sys.stderr)
+        err = f"{type(e).__name__}: {str(e)[:160]}"
+        print("sheet sync skipped:", err, file=sys.stderr)
+        # A silent Sheet drift is how you lose trust in the tracker. Tell him, at most once per 6h.
+        try:
+            import subprocess
+            subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
+                            f"Google Sheet sync failed ({err}). CSV is safe, Sheet is behind. "
+                            f"Check quota/sharing, then re-run tracker.py init-sheet if needed.",
+                            "--key", "sheet_sync", "--cooldown", "360"],
+                           cwd=ROOT, timeout=60)
+        except Exception:
+            pass
 
 
 def add(d):
@@ -87,7 +98,7 @@ def add(d):
     new = not F.exists()
     row = {c: safe_cell(d.get(c, "") or "") for c in COLS}
     row["date"], row["time"] = today(), now()
-    if dry_run():
+    if dry_run() and not row["status"].startswith("dry_"):
         row["status"] = "dry_" + row["status"]      # log the decision, never apply
     with FileLock(LOCK):
         with F.open("a", encoding="utf-8", newline="") as f:
@@ -108,6 +119,18 @@ def used_today(portal=None, chat=None):
                 and (chat is None or r.get("chat") == chat):
             n += 1
     return n
+
+
+def counts_today(all_rows=None):
+    """One CSV read -> (global, per_portal, per_chat). Snapshot consistent with itself."""
+    rs = rows() if all_rows is None else all_rows
+    d, per_portal, per_chat = today(), {}, {}
+    for r in rs:
+        if r["date"] != d or r["status"].startswith("dry_") or r["status"] not in APPLIED:
+            continue
+        per_portal[r["portal"]] = per_portal.get(r["portal"], 0) + 1
+        per_chat[r.get("chat", "")] = per_chat.get(r.get("chat", ""), 0) + 1
+    return sum(per_portal.values()), per_portal, per_chat
 
 
 def main():
@@ -140,18 +163,20 @@ def main():
     elif args.cmd == "check":
         lim = cfg("profile.yaml")["limits"]
         per = lim.get("per_portal", {}).get(args.portal, lim.get("default_per_portal", 15))
-        p_used, g_used = used_today(args.portal), used_today()
+        g_used, per_portal, per_chat_used = counts_today()   # single consistent snapshot
+        p_used = per_portal.get(args.portal, 0)
         per_chat = lim.get("per_chat", {}).get(args.chat) if args.chat else None
+        chat_used = per_chat_used.get(args.chat, 0)
         if g_used >= lim["global_daily"]:
             print(f"LIMIT global {g_used}/{lim['global_daily']}")
             sys.exit(3)
         if p_used >= per:
             print(f"LIMIT {args.portal} {p_used}/{per}")
             sys.exit(3)
-        if per_chat is not None and used_today(chat=args.chat) >= per_chat:
-            print(f"LIMIT {args.chat} {used_today(chat=args.chat)}/{per_chat}")
+        if per_chat is not None and chat_used >= per_chat:
+            print(f"LIMIT {args.chat} {chat_used}/{per_chat}")
             sys.exit(3)
-        tail = f", {args.chat} {used_today(chat=args.chat)}/{per_chat}" if per_chat is not None else ""
+        tail = f", {args.chat} {chat_used}/{per_chat}" if per_chat is not None else ""
         print(f"OK {args.portal} {p_used}/{per} (global {g_used}/{lim['global_daily']}{tail})")
     elif args.cmd == "summary":
         rs = [r for r in rows() if r["date"] == today() and (not args.portal or r["portal"] == args.portal)]

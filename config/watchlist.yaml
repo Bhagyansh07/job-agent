@@ -1,24 +1,40 @@
 # Companies whose career pages are watched every 30 min by scripts/watcher.py.
 # Supported ATS (public JSON APIs): greenhouse, lever, ashby
 # token = the company slug in the ATS URL:
-#   greenhouse: boards.greenhouse.io/<token>     lever: jobs.lever.co/<token>     ashby: jobs.ashbyhq.com/<token>
+#   greenhouse: boards.greenhouse.io/<token>   lever: jobs.lever.co/<token>   ashby: jobs.ashbyhq.com/<token>
 #
-# Every entry below was probed live on 2026-10-23 and returned jobs.
-# India-heavy boards first, then global-remote boards that hire in India.
+# THIS IS A FRESHER LIST (0-1 year experience). Every entry was probed live with
+#   python scripts/probe_ats.py --check
+# and every entry currently has at least one non-senior engineering/analyst role in India.
+# Never add a company without probing it: a wrong slug returns 404 forever and the
+# watcher cannot tell you, so chat3 slowly starves.
+#
+# Deliberately NOT watched (senior-only boards that flood the queue with 3+ year roles):
+#   MongoDB, Cloudflare, Stripe, Datadog, Elastic, GitLab, Linear, Railway, Druva
+# Deliberately NOT watched (no public greenhouse/lever/ashby board - apply through
+# Naukri / LinkedIn / Instahyre / the company site instead):
+#   Razorpay, PhonePe, Swiggy, Zomato, Zepto, Blinkit, UrbanCompany, Jupiter, Fi,
+#   Niyo, Open, Jar, Cal.com, Postman, BrowserStack, Freshworks, Chargebee, Hasura,
+#   Smallcase, Juspay, Cleartax, Khatabook, Dream11, Flipkart, Myntra, Nykaa,
+#   ShareChat, Unacademy, Scaler, Vedantu, PolicyBazaar, Cars24, Shiprocket
+# Re-check any of them anytime: python scripts/probe_ats.py --discover "Company Name"
 companies:
-  # ---- India ----
-  - {name: Paytm, ats: lever, token: paytm}
-  - {name: Tekion, ats: ashby, token: tekion}
-  - {name: Meesho, ats: lever, token: meesho}
-  - {name: Groww, ats: greenhouse, token: groww}
-  - {name: CRED, ats: lever, token: cred}
-  - {name: Atlan, ats: ashby, token: atlan}
-  - {name: Navi, ats: ashby, token: navi}
-  - {name: MongoDB, ats: greenhouse, token: mongodb}
-  - {name: Cloudflare, ats: greenhouse, token: cloudflare}
-  - {name: Stripe, ats: greenhouse, token: stripe}
-  - {name: Datadog, ats: greenhouse, token: datadog}
-  # ---- global remote (hire in India) ----
-  - {name: GitLab, ats: greenhouse, token: gitlab}
-  - {name: Elastic, ats: greenhouse, token: elastic}
-  - {name: Supabase, ats: ashby, token: supabase}
+  # ---- India product companies (junior eng / analyst roles live on these boards) ----
+  - {name: Paytm, ats: lever, token: paytm}            # 197 jobs, 170 India
+  - {name: Tekion, ats: ashby, token: tekion}          # 93, 68 India
+  - {name: Meesho, ats: lever, token: meesho}          # 54, 54 India
+  - {name: HackerRank, ats: greenhouse, token: hackerrank}  # 29, 20 India (incl. SDE intern)
+  - {name: Mindtickle, ats: lever, token: mindtickle}  # 21, 21 India
+  - {name: FamPay, ats: lever, token: fampay}          # 17, 17 India
+  - {name: Zeta, ats: greenhouse, token: zetaglobal}   # 115, 57 India
+  - {name: Slice, ats: greenhouse, token: slice}       # 23, 4 India
+  - {name: Groww, ats: greenhouse, token: groww}       # 10, 10 India
+  - {name: CRED, ats: lever, token: cred}              # 10, 11 India
+  - {name: Atlan, ats: ashby, token: atlan}            # 7, 5 India
+  - {name: Navi, ats: ashby, token: navi}              # 2
+
+  # ---- global remote, they do hire in India ----
+  - {name: Supabase, ats: ashby, token: supabase}      # 64, 64 India
+  - {name: Plane, ats: ashby, token: plane}            # 33, 10 India
+  - {name: PostHog, ats: ashby, token: posthog}        # 11, 9 India
+  - {name: Trigger.dev, ats: ashby, token: triggerdev} # 6, 4 India

@@ -104,6 +104,34 @@ def clean_old_logs():
             pass
 
 
+def run_health_check():
+    """Pre-flight: catch a dead Telegram token / missing resume before a cycle burns an hour.
+    Throttled to once an hour; a FAIL alerts once per 6h but never blocks the cycle."""
+    report = ROOT / "state" / "health.json"
+    try:
+        fresh = report.exists() and (time.time() - report.stat().st_mtime < 3600)
+    except OSError:
+        fresh = False
+    if fresh:
+        return
+    try:
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "health_check.py"), "--quiet"],
+                           cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=90)
+        out = (r.stdout or "").strip()
+        if out:
+            print(f"[{chat}] health:\n{out}")
+        if r.returncode == 1:
+            fails = [ln for ln in out.splitlines() if ln.startswith("FAIL")]
+            msg = "; ".join(ln[5:].strip() for ln in fails)[:600] or "health check failed"
+            subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
+                            f"Health check FAIL: {msg} | fix these, agent is running degraded",
+                            "--key", "health_fail", "--urgent", "--cooldown", "360"],
+                           cwd=ROOT, timeout=60)
+    except Exception as e:
+        print(f"[{chat}] health check could not run: {e}")
+
+
 # Stagger chat starts so three cycles never hit the gateway in the same second.
 time.sleep({"chat1": 0, "chat2": 25, "chat3": 50}.get(chat, 0))
 
@@ -150,6 +178,7 @@ while True:
             subprocess.run([sys.executable, str(ROOT / "scripts" / "watcher.py")], timeout=300)
         except Exception as e:
             print("watcher failed:", e)
+    run_health_check()
     now = dt.datetime.now(IST)
     if chat == "chat1":
         chain = ["kilo/laguna-s", "kilo/laguna-xs", "kilo/flint", "kilo/dots3"]
@@ -221,4 +250,16 @@ while True:
                 guard.write_text(dt.datetime.now(IST).isoformat(timespec="seconds"), encoding="utf-8")
             except Exception as e:
                 print(f"[{chat}] failure alert could not be sent: {e}")
+    else:
+        # recovery notice: only if a failure was alerted and is still unresolved
+        guard = ROOT / "state" / ".last_fail_alert"
+        if guard.exists():
+            try:
+                subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
+                                f"{chat}: models are working again, cycle completed. Resuming normally.",
+                                "--key", "models_recovered", "--no-dedupe"],
+                               cwd=ROOT, timeout=60)
+                guard.unlink(missing_ok=True)
+            except Exception as e:
+                print(f"[{chat}] recovery alert could not be sent: {e}")
     time.sleep(max(60, min_cycle - (time.time() - start)))

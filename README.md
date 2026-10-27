@@ -26,6 +26,32 @@ har portal ke baad Telegram pe audit report dete hain, recruiter mails/messages 
 8. First run: `opencode` kholo is folder me, bolo: **Read chats/00_first_run.md and do it**.
    Ye resume se master.json banayega, tumse answers.yaml ke khali sawal Telegram pe puchhega, aur
    tumhe har portal me khud login karwayega (password agent ko nahi dena hai, tum browser me khud login karoge).
+9. Sanity check (kuch bhi apply karne se pehle):
+   ```
+   python scripts/health_check.py        # 0 fail hona chahiye, warn padh lo
+   python scripts/watcher.py             # queue/new_jobs.jsonl me jobs aani chahiye
+   python scripts/probe_ats.py --check   # watchlist ke saare boards live hain?
+   python tools/verify_fixes.py          # 51-check regression suite (sab PASS hone chahiye)
+   ```
+
+## GitHub se fresh setup (doosre laptop pe)
+Ye repo private hai kyunki `resume/master.json`, `config/answers.yaml` aur tracker me personal data hai.
+Naye folder me:
+```
+git clone https://github.com/Bhagyansh07/job-agent.git
+cd job-agent
+pip install -r requirements.txt
+copy .env.example .env        # phir .env me Telegram keys bharo
+```
+`.env`, `secrets/`, `browser-profiles/`, `tracker/*.csv`, `queue/`, `output/` git me nahi jaate, isliye
+naye laptop pe unhe dobara banana padega:
+- Telegram keys: README step 4.
+- Google (optional): README step 5. Iske bina Gmail OTP aur Sheet sync off rahenge, baaki sab chalega.
+- Resume PDF: `resume/` me daalo, phir `chats/00_first_run.md` chalao. Repo me `master.json` already hai,
+  isliye PDF ke bina bhi resume render hoga.
+- Portals me login: pehli baar agent khud browser kholke rukega, tum login karo.
+Agar purani machine ka state chahiye (seen jobs, tracker rows) to `.env`, `secrets/`, `tracker/*.csv`,
+`queue/new_jobs.jsonl`, `state/seen_jobs.jsonl` alag se copy karo.
 
 ## Roz chalane ka tareeka (3 terminals, 24x7)
 ```
@@ -48,7 +74,9 @@ powershell -ExecutionPolicy Bypass -File .\stop_all.ps1            # sab band (c
   Sirf ek chat rokni ho to `state/PAUSE_chat1` (ya chat2/chat3) banao.
 - **DRY_RUN**: `.env` me `DRY_RUN=1` -> agent final Submit kabhi nahi dabayega; decision `dry_` prefixed status se
   log hoga aur dry_ rows daily limits me count nahi hote. Sheet sync bhi skip hota hai. Outreach draft_ready pe rukta hai,
-  cold email `draft` mode me rehta hai. Normal chalane ke liye `DRY_RUN=0`.
+  cold email `draft` mode me rehta hai. Normal chalane ke liye `DRY_RUN=0` (pehle din 5-10 applications khud dekh lo).
+- **Outreach**: `config/profile.yaml` me `outreach.mode: auto` hai. `DRY_RUN=1` tak safe hai; `DRY_RUN=0` karte hi agent
+  LinkedIn pe connection requests/DMs khud bhejna shuru kar dega (12/day cap). Ye band chahiye to `mode: draft` kar do.
 - **Per-chat daily budgets** (config/profile.yaml `limits.per_chat`): chat1 = 30, chat2 = 25, chat3 = 45 applications/day.
   Iske alawa per-portal caps aur global 100/day cap bhi lagti hai.
 - **Cycle logs**: har cycle ka full opencode output `state/logs/<chat>_YYYYMMDD_HHMM.log` me jata hai (console pe last 30 lines).
@@ -80,11 +108,13 @@ powershell -ExecutionPolicy Bypass -File .\stop_all.ps1            # sab band (c
   par read/edit/shell deny, aur `grep` poora block taaki secrets search na ho sake). Ye best-effort guard hai, sandbox nahi;
   residual risk `AUDIT.md` me likha hai.
 - Playwright MCP pehli baar `npx` se download hota hai; Chrome windows visible rehti hain (login/CAPTCHA ke liye).
-- `config/watchlist.yaml` me companies agent khud add karta hai (greenhouse/lever/ashby).
+- `config/watchlist.yaml` me nayi company add karne se pehle `python scripts/probe_ats.py --discover "<Company>"` chalao.
+  Galat token 404 deta hai aur watcher use chupchaap skip karta hai (2026-10-27 se health_check aur watcher dead boards alert karte hain).
 - Files: tracker/applications.csv (+Sheet), tracker/outreach.csv, tracker/cold_emails.csv, output/resumes/*.pdf, queue/, state/.
 - Secrets (.env, secrets/, browser-profiles/) kisi ko mat bhejna, zip share mat karna.
 
 ## Folder map
 AGENTS.md (rules) | chats/ (3 chat playbooks + first run) | skills/ (matching, apply flow, tailoring, writing_style, outreach, portals/*) |
-scripts/ (tracker, telegram, gmail, resume PDF, watcher, runner, daily_report, cold_email, recruiter_sheet, portal_account) |
-config/ (profile, answers, watchlist, cold_email)
+scripts/ (tracker, telegram, gmail, resume PDF, watcher, runner, daily_report, cold_email, recruiter_sheet, portal_account, health_check, probe_ats) |
+tools/verify_fixes.py (regression suite) | config/ (profile, answers, watchlist, cold_email) |
+powershell: start_all.ps1 / stop_all.ps1 / register_startup.ps1 (24x7 auto-start)

@@ -21,11 +21,32 @@ def flat_skills(d):
     return [s.strip() for s in out if s and s.strip()]
 
 
+def _token_in(text: str, token: str) -> bool:
+    """Whole-token match so 'Java' is not satisfied by 'JavaScript' (and vice versa).
+
+    Boundaries: a token may not be glued to another word character on either side.
+    '+', '#', '.' are allowed inside tech names (C++, C#, Node.js, .NET) but a trailing
+    word character still blocks the match.
+    """
+    t = (token or "").strip().lower()
+    if not t:
+        return True
+    return re.search(r"(?<![a-z0-9])" + re.escape(t) + r"(?![a-z0-9])", text) is not None
+
+
+def _number_in(text: str, num: str) -> bool:
+    """Same idea for metrics: '3' must not match inside '2027' or '9.27'."""
+    n = num.rstrip("%").strip()
+    if not n:
+        return True
+    return re.search(r"(?<![\d.])" + re.escape(n) + r"(?![\d])", text) is not None
+
+
 def guard(master, tailored):
     mtxt = json.dumps(master, ensure_ascii=False).lower()
     bad = []
     for s in flat_skills(tailored):
-        if s.lower() not in mtxt:
+        if not _token_in(mtxt, s):
             bad.append(f"skill not in master: {s}")
     ttxt = []
     for sec in ("experience", "projects"):
@@ -33,7 +54,7 @@ def guard(master, tailored):
             ttxt += it.get("bullets", [])
     ttxt.append(tailored.get("summary", ""))
     for num in set(re.findall(r"\d[\d,.]*\+?%?", " ".join(ttxt))):
-        if num.lower() not in mtxt:
+        if not _number_in(mtxt, num):
             bad.append(f"number not in master: {num}")
     for sec in ("experience", "projects"):
         mnames = json.dumps(master.get(sec, []), ensure_ascii=False).lower()
@@ -145,7 +166,7 @@ def _html(t):
     if t.get("experience"):
         sec("Leadership & Positions of Responsibility")
         for x in t["experience"]:
-            trow(f"{x.get('title')} — {x.get('company')}", x.get("dates"))
+            trow(f"{x.get('title')} | {x.get('company')}", x.get("dates"))
             ul(x.get("bullets", []))
         end()
     if t.get("achievements"):
@@ -207,6 +228,43 @@ def render(t, out):
         raise RuntimeError("Chrome did not produce the PDF")
 
 
+def ats_check(pdf, master) -> list[str]:
+    """Warn if the PDF has no usable text layer. Real ATS parsers read text, not pixels.
+
+    A resume that looks fine but extracts as an image/blank page is silently rejected.
+    """
+    problems: list[str] = []
+    try:
+        from pypdf import PdfReader
+    except Exception:
+        return ["pypdf not installed: cannot verify the text layer"]
+    try:
+        reader = PdfReader(str(pdf))
+        text = " ".join((p.extract_text() or "") for p in reader.pages)
+    except Exception as exc:  # noqa: BLE001
+        return [f"cannot read back the PDF: {type(exc).__name__}"]
+    flat = " ".join(text.split()).lower()
+    if len(flat) < 400:
+        problems.append(f"text layer too small ({len(flat)} chars): ATS may see a blank page")
+    contact = master.get("contact") or {}
+    name = str(master.get("name") or "").strip().lower()
+    if name:
+        parts = [p for p in name.split() if len(p) > 2]
+        missing = [p for p in parts if p not in flat]
+        if missing:
+            problems.append("name not extractable: " + " ".join(missing))
+    email = str(contact.get("email") or "").strip().lower()
+    if email and email not in flat:
+        problems.append(f"email not extractable: {email}")
+    digits = re.sub(r"\D", "", str(contact.get("phone") or ""))
+    if digits and digits[-10:] not in re.sub(r"\D", "", flat):
+        problems.append("phone not extractable")
+    links = [str(contact.get(k) or "").lower() for k in ("linkedin", "github")]
+    if any(links) and not any(lnk and lnk.split("//")[-1] in flat for lnk in links):
+        problems.append("no LinkedIn/GitHub URL extractable")
+    return problems
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--tailored", required=True)
@@ -232,3 +290,8 @@ if __name__ == "__main__":
             print("PAGES 1")
     except Exception:
         pass
+    problems = ats_check(out, master)
+    if problems:
+        print("ATS_TEXT_WARN: " + " | ".join(problems))
+    else:
+        print("ATS_TEXT_OK")

@@ -21,6 +21,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 import sys
 
 from common import ROOT, FileLock
@@ -55,6 +56,19 @@ def _append_needs(kind: str, key: str, msg: str) -> None:
         f.write(f"- {ts} | {kind} | {key} | {msg.replace(chr(10), ' / ')}\n")
 
 
+def _auto_key(message: str) -> str:
+    """Stable, collision-resistant key for alerts sent without --key.
+
+    Digits and URLs are normalised so the same recurring problem dedupes even when the
+    counts change ("3 failures" vs "7 failures"), and sha256/16 hex makes collisions
+    practically impossible compared with the old sha1[:12].
+    """
+    norm = re.sub(r"https?://\S+", "<url>", message.lower())
+    norm = re.sub(r"\d+", "<n>", norm)
+    norm = " ".join(norm.split())
+    return "auto_" + hashlib.sha256(norm.encode("utf-8")).hexdigest()[:16]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Urgent Telegram escalation")
     ap.add_argument("message", nargs="?", default="")
@@ -65,7 +79,7 @@ def main() -> int:
     ap.add_argument("--resolve", default="", help="mark a key resolved and print it")
     a = ap.parse_args()
 
-    key = (a.key or "").strip() or hashlib.sha1((a.message or "").encode("utf-8")).hexdigest()[:12]
+    key = (a.key or "").strip() or _auto_key(a.message or "")
 
     if a.resolve:
         with FileLock(LOCK):

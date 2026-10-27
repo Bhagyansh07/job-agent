@@ -7,7 +7,7 @@ candidate:
   phone: "6268228869"
   linkedin: "https://www.linkedin.com/in/bhagyanshchandel"
   github: "https://github.com/Bhagyansh07"
-  portfolio: ""    # coming soon - fill when Bhagyansh sends the URL
+  portfolio: "https://github.com/Bhagyansh07"
 
 roles_include:
   - full stack
@@ -31,6 +31,7 @@ roles_include:
   - java developer
   - trainee engineer
   - graduate engineer
+  - fresher
 
 roles_exclude_title:
   - senior
@@ -135,7 +136,7 @@ session:
   min_applications_per_portal: 8
 
 active_hours_ist:               # portals with strong bot-detection: only these hours
-  strict_portals: [naukri, linkedin, indeed, instahyre, foundit, glassdoor, apna]
+  strict_portals: [naukri, linkedin, indeed, instahyre, foundit, glassdoor, apna, cutshort]
   from: "08:00"
   to: "23:30"
   # all other portals / career pages / ATS: 24x7

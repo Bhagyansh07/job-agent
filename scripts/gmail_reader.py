@@ -10,6 +10,19 @@ SEEN = ROOT / "state" / "seen_mail.json"
 KEYWORDS = re.compile(r"interview|shortlist|short-list|assessment|test link|schedule|call|opportunity|next round|hiring|offer|your application|selected|regret", re.I)
 
 
+def _alert_auth(reason: str) -> None:
+    """A dead Gmail auth silently stops OTPs and recruiter-mail alerts. Tell him, at most 6-hourly."""
+    try:
+        import subprocess
+        subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
+                        f"Gmail not usable: {reason} | run python scripts/google_auth.py "
+                        f"(and --send) again, OTP reading is blocked",
+                        "--key", "gmail_auth", "--cooldown", "360"],
+                       cwd=ROOT, timeout=60)
+    except Exception:
+        pass
+
+
 def walk_text(payload):
     out = []
 
@@ -51,14 +64,16 @@ def main():
         svc = service("gmail", "v1", interactive=False)
     except FileNotFoundError:
         print("GMAIL_NOT_CONFIGURED: secrets/credentials.json missing")
-        return 0
+        _alert_auth("secrets/credentials.json missing")
+        return 6
     except RuntimeError as exc:
-        # Missing OAuth is expected until Bhagyansh finishes setup. Do not break a cycle.
         print(f"GMAIL_NOT_CONFIGURED: {exc}")
-        return 0
+        _alert_auth(str(exc)[:200])
+        return 6
     except Exception as exc:  # noqa: BLE001
         print(f"GMAIL_AUTH_FAILED: {type(exc).__name__}: {str(exc)[:160]}")
-        return 0
+        _alert_auth(f"{type(exc).__name__}: {str(exc)[:160]}")
+        return 7
 
     try:
         if args.cmd == "otp":

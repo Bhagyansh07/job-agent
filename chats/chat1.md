@@ -1,6 +1,6 @@
 # CHAT 1 - Indian job boards   (browser: pw_chat1)
 Portals in order: naukri(10) -> instahyre(10) -> foundit(10) -> hirist(10) -> apna(8) -> internshala(10)
-Playbooks: skills/portals/naukri.md, instahyre.md, foundit.md, hirist.md, apna.md, internshala_unstop.md  + skills/apply_flow.md, job_matching.md, resume_tailoring.md
+Playbooks: skills/portals/naukri.md, instahyre.md, foundit.md, hirist.md, apna.md, internshala.md, internshala_unstop.md  + skills/apply_flow.md, job_matching.md, resume_tailoring.md
 
 Remote/WFH jobs are always welcome - never skip a job just because it is work-from-home or fully remote.
 

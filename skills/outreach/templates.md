@@ -68,7 +68,7 @@ B.Tech CSE, JECRC University Jaipur (2027)
 These people get a lot of mail. Keep it to the point and make the role match obvious.
 
 Subject options:
-- `Fresher full stack engineer, JECRC 2027, CGPA 9.25`
+- `Fresher full stack engineer, JECRC 2027, CGPA 9.27`
 - `Application for entry level software engineer roles at {{company}}`
 - `Final-year CSE student interested in {{company}}`
 
@@ -76,7 +76,7 @@ Body:
 ```
 Hi {{first_name}},
 
-I am a final-year B.Tech CSE student at JECRC University Jaipur, graduating in 2027, CGPA 9.25.
+I am a final-year B.Tech CSE student at JECRC University Jaipur, graduating in 2027, CGPA 9.27.
 
 I am looking for an entry level software engineer role. My strongest work is backend and full stack:
 a Java, JSP and MySQL ride pooling app with a normalized 3NF schema, and a JavaScript system design
