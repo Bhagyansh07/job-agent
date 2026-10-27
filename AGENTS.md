@@ -1,4 +1,4 @@
-# AGENTS.md - Bhagyansh's Job Application Agent (OpenCode; model layer: Kilo free models, per-chat routing in scripts/run_loop.py)
+# AGENTS.md - Bhagyansh's Job Application Agent (OpenCode; model layer: opencode/big-pickle for every chat, set in scripts/run_loop.py, override with JOB_AGENT_MODEL)
 
 You are an autonomous job-search operator working on behalf of **Bhagyansh Chandel** (final-year B.Tech CSE, JECRC Jaipur, grad 2027, CGPA 9.27).
 Goal: apply to ~100 GOOD-FIT jobs/day across many portals + career pages, like a careful human. Quality of fit > raw count.

@@ -12,6 +12,11 @@ IST = ZoneInfo("Asia/Kolkata")
 chat = sys.argv[1] if len(sys.argv) > 1 else "chat1"
 min_cycle = int(sys.argv[2]) if len(sys.argv) > 2 else (1800 if chat == "chat3" else 900)
 MODEL_TIMEOUT = int(os.environ.get("OPENCODE_CYCLE_TIMEOUT", "1800"))
+# Every chat runs on the same model unless JOB_AGENT_MODEL says otherwise.
+PRIMARY_MODEL = os.environ.get("JOB_AGENT_MODEL", "opencode/big-pickle").strip() or "opencode/big-pickle"
+FALLBACK_MODELS = [m.strip() for m in
+                   os.environ.get("JOB_AGENT_FALLBACKS", "kilo/laguna-s,kilo/flint").split(",")
+                   if m.strip()]
 exe = shutil.which("opencode") or "opencode"
 idle_file = ROOT / "state" / f"{chat}_idle_until.txt"
 pauses = [ROOT / "state" / "PAUSE", ROOT / "state" / f"PAUSE_{chat}"]
@@ -220,14 +225,9 @@ while True:
     run_health_check()
     reap_orphans()
     now = dt.datetime.now(IST)
-    if chat == "chat1":
-        chain = ["kilo/laguna-s", "kilo/laguna-xs", "kilo/flint", "kilo/dots3"]
-    elif chat == "chat2":
-        chain = ["kilo/laguna-xs", "kilo/laguna-s", "kilo/flint", "kilo/dots3"]
-    elif chat == "chat3":
-        chain = ["kilo/flint", "kilo/laguna-s", "kilo/laguna-xs", "kilo/dots3"]
-    else:
-        chain = ["kilo/laguna-s", "kilo/laguna-xs", "kilo/flint", "kilo/dots3"]
+    # Model layer: the SAME primary model for every chat (Big Pickle), then cheap fallbacks.
+    # Override without touching code: set JOB_AGENT_MODEL / JOB_AGENT_FALLBACKS in the environment.
+    chain = [PRIMARY_MODEL] + [m for m in FALLBACK_MODELS if m != PRIMARY_MODEL]
     prompt = (f"Read chats/{chat}.md fully, then run ONE work cycle exactly as described there. "
               f"Use ONLY the browser tools of the MCP server named {pw}. Today is {now.date().isoformat()}, "
               f"time now {now.strftime('%H:%M')} IST.")
@@ -283,7 +283,8 @@ while True:
         if stale:
             try:
                 subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
-                                f"{chat}: all 4 models failed this cycle. Quota or gateway problem. "
+                                f"{chat}: all models failed this cycle ({', '.join(chain)}). "
+                                f"Quota, gateway or login problem. "
                                 f"Log: state/logs/{logfile.name}",
                                 "--key", "models_failed", "--urgent", "--cooldown", "360"],
                                cwd=ROOT, timeout=60)

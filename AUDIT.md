@@ -7,6 +7,7 @@ Verdict: the infrastructure works. All 18 scripts compile, the 73-check regressi
 the renderer produces a 1-page ATS-readable PDF, Telegram is reachable, and 16/16 watchlist boards
 answer live with at least one junior engineering role in India. Nothing has been auto-submitted yet
 because `DRY_RUN=1` (by design).
+| 28 | HIGH | Cycles died with "Your authentication token is invalid" after the OpenCode Console login expired, and two stale Console credentials (a second Google account) were still stored, so the wrong account kept getting picked. Kilo free models were dead, so every cycle burned 4 failed attempts and then alerted. | Removed the stale Console credentials, kept one account, and moved every chat to `opencode/big-pickle` (`PRIMARY_MODEL`, overridable with `JOB_AGENT_MODEL`; `kilo/laguna-s` and `kilo/flint` only as fallbacks). Verified with a real cycle: tracker check, Naukri navigation and DOM extraction all ran on big-pickle. |
 
 ## Fixed on 2026-10-27
 

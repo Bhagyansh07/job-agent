@@ -54,6 +54,16 @@ naye laptop pe unhe dobara banana padega:
 Agar purani machine ka state chahiye (seen jobs, tracker rows) to `.env`, `secrets/`, `tracker/*.csv`,
 `queue/new_jobs.jsonl`, `state/seen_jobs.jsonl` alag se copy karo.
 
+## Model layer
+Teeno chats **`opencode/big-pickle`** pe chalte hain (same model, same quality, koi per-chat routing nahi).
+Model badalna ho to code chhedne ki zarurat nahi:
+```powershell
+$env:JOB_AGENT_MODEL = "opencode/big-pickle"                       # primary
+$env:JOB_AGENT_FALLBACKS = "kilo/laguna-s,kilo/flint"              # optional, comma separated
+```
+Agar teeno fail ho jayein to agent 6 ghante me ek baar Telegram pe urgent alert bhejta hai, aur models wapas
+chalne pe recovery message bhejta hai.
+
 ## Roz chalane ka tareeka (3 terminals, 24x7)
 ```
 python scripts/run_loop.py chat1     # Naukri, Instahyre, Foundit, Hirist, Apna, Internshala
