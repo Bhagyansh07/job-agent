@@ -6,7 +6,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 def load_env():
     p = ROOT / ".env"
     if p.exists():
-        for line in p.read_text(encoding="utf-8").splitlines():
+        for line in p.read_text(encoding="utf-8-sig").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -25,7 +25,7 @@ load_env()
 
 def cfg(name):
     import yaml
-    return yaml.safe_load((ROOT / "config" / name).read_text(encoding="utf-8")) or {}
+    return yaml.safe_load((ROOT / "config" / name).read_text(encoding="utf-8-sig")) or {}
 
 
 def is_dry():

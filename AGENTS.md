@@ -70,9 +70,10 @@ START of every cycle (you have no memory of earlier cycles - the files are the m
 3. Do not retry anything listed in BLOCKED.md for today. Use LEARNINGS.md tricks per portal.
 4. Work ONE job at a time; max 1 portal per cycle and max 8 applications per cycle. Keep the cursor on the same portal until its per-portal cap is hit or no fresh eligible jobs remain (see your chat file). Plan in 2-3 lines -> do the smallest step -> verify -> log. No giant leaps.
 END of every cycle:
-5. Append one entry to `state/RUN_LOG.md`: date/time, chat, per-portal applied/skipped/failed counts, issues, what to do next.
-6. If you found a reliable trick or quirk of a portal (a filter, a button, a form pattern), append one line to `state/LEARNINGS.md` as `portal | trick`.
-7. Keep RUN_LOG short: when it passes ~200 lines, summarise old entries into 10 lines at the top.
+5. Close your browser first: call the `browser_close` tool of your server (`pw_chatN_browser_close`). Chrome must not stay open between cycles; the profile keeps every login.
+6. Append one entry to `state/RUN_LOG.md`: date/time, chat, per-portal applied/skipped/failed counts, issues, what to do next.
+7. If you found a reliable trick or quirk of a portal (a filter, a button, a form pattern), append one line to `state/LEARNINGS.md` as `portal | trick`.
+8. Keep RUN_LOG short: when it passes ~200 lines, summarise old entries into 10 lines at the top.
 
 Escalation: the same step fails 3 times in a row -> STOP it. When appending a new BLOCKED entry, first move every entry dated before today into state\BLOCKED_archive.md. Append to `state/BLOCKED.md` (`date | portal | job/step | what was tried | blocker`), send a Telegram alert with the same text, and move on to the next job/portal. Never loop forever.
 Ambiguity: if a rule is unclear or two files disagree, do NOT guess. Priority order: AGENTS.md hard rules > config/profile.yaml > chats/chatN.md > skills/*.md. For anything still unclear (money, ID, legal, unusual form) -> ask on Telegram or skip and log `needs_input`. Do not invent requirements, answers or facts.

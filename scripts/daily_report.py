@@ -14,7 +14,7 @@ def rows():
     f = ROOT / "tracker" / "applications.csv"
     if not f.exists():
         return []
-    with f.open(encoding="utf-8", newline="") as fh:
+    with f.open(encoding="utf-8-sig", newline="") as fh:
         return list(csv.DictReader(fh))
 
 

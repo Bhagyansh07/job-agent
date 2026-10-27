@@ -25,7 +25,10 @@ def dry_run():
 def rows():
     if not F.exists():
         return []
-    with F.open(encoding="utf-8", newline="") as f:
+    # utf-8-sig: the CSV gets edited in Excel/PowerShell sometimes, which prepends a BOM.
+    # With plain utf-8 the first column reads as "\ufeffdate" and every limit/dedupe check
+    # silently sees an empty date.
+    with F.open(encoding="utf-8-sig", newline="") as f:
         # normalise: an older CSV without every column must not crash the runner
         return [{c: (r.get(c) or "") for c in COLS} for r in csv.DictReader(f)]
 

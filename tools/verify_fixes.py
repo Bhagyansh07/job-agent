@@ -79,6 +79,37 @@ check("health_check: validates mcp servers", "def check_mcp_servers" in hc and "
 sa = (ROOT / "start_all.ps1").read_text(encoding="utf-8")
 check("start_all: -Chats parameter", "[string[]]$Chats" in sa and "-Chats" in (ROOT / "README.md").read_text(encoding="utf-8"))
 
+# ---------------- 2c. tracker CSVs survive an Excel BOM ----------------
+# Real bug found on 2026-10-28: all three tracker CSVs started with a UTF-8 BOM, plain utf-8
+# reading turned the first column into "\ufeffdate", so used_today()/exists() saw empty dates:
+# daily limits and duplicate detection were silently off.
+for name in ("tracker.py", "daily_report.py", "outreach.py", "portal_account.py", "cold_email.py"):
+    src = (ROOT / "scripts" / name).read_text(encoding="utf-8")
+    check(f"{name}: reads csv as utf-8-sig", 'encoding="utf-8-sig"' in src)
+
+spec = importlib.util.spec_from_file_location("trk_bom", ROOT / "scripts" / "tracker.py")
+trk = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(trk)
+bom_csv = ROOT / "state" / "tmp" / "bom_rows.csv"
+bom_csv.parent.mkdir(parents=True, exist_ok=True)
+bom_csv.write_bytes(b"\xef\xbb\xbf" + b"date,time,portal,company,role,location,url,match,status,resume,notes,chat\n"
+                    b"2026-10-28,10:00,naukri,Acme,QA Engineer,Remote,https://x.test/1,81,applied_auto,,,chat1\n")
+trk.F = bom_csv
+bom_rows = trk.rows()
+check("tracker: BOM csv keeps date (limits work)", bool(bom_rows) and bom_rows[0]["date"] == "2026-10-28",
+      str(bom_rows[:1]))
+for rel in ("tracker/applications.csv", "tracker/outreach.csv", "tracker/cold_emails.csv"):
+    f = ROOT / rel
+    if f.exists():
+        check(f"{rel}: no utf-8 BOM", not f.read_bytes().startswith(b"\xef\xbb\xbf"))
+
+# hand-edited JSON (.env, master.json, opencode.json) must survive a BOM too: json.loads rejects it
+for name in ("common.py", "render_resume.py", "health_check.py"):
+    src = (ROOT / "scripts" / name).read_text(encoding="utf-8")
+    check(f"{name}: none of its reads use plain utf-8 for BOM-prone files",
+          'read_text(encoding="utf-8")' not in src)
+
+
 
 # ---------------- 3. MEDIUM: tracker single snapshot ----------------
 tr = (ROOT / "scripts" / "tracker.py").read_text(encoding="utf-8")

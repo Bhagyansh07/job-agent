@@ -108,7 +108,7 @@ def check_google() -> None:
     tok_send = ROOT / "secrets" / "token_send.json"
     if cred.exists():
         try:
-            d = json.loads(cred.read_text(encoding="utf-8"))
+            d = json.loads(cred.read_text(encoding="utf-8-sig"))
             if "installed" in d or "web" in d:
                 ok("credentials.json", "OAuth client present")
             else:
@@ -133,7 +133,7 @@ def check_resume() -> None:
         fail("resume/master.json", "missing -> rebuild from your PDF (chats/00_first_run.md)")
         return
     try:
-        d = json.loads(p.read_text(encoding="utf-8"))
+        d = json.loads(p.read_text(encoding="utf-8-sig"))
     except Exception as exc:  # noqa: BLE001
         fail("resume/master.json", f"invalid JSON: {type(exc).__name__}")
         return
@@ -166,7 +166,7 @@ def check_configs() -> None:
             fail("config/" + name, "missing")
             continue
         try:
-            d = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+            d = yaml.safe_load(p.read_text(encoding="utf-8-sig")) or {}
         except Exception as exc:  # noqa: BLE001
             fail("config/" + name, f"YAML error: {type(exc).__name__}")
             continue
@@ -240,7 +240,7 @@ def check_mcp_servers() -> None:
     """
     cfg_path = ROOT / "opencode.json"
     try:
-        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8-sig"))
     except Exception as exc:  # noqa: BLE001
         fail("opencode.json", f"{type(exc).__name__} -> run_loop cannot start chats")
         return
@@ -333,7 +333,7 @@ def check_watchlist_live() -> None:
         import urllib.request
         from concurrent.futures import ThreadPoolExecutor
         import yaml
-        companies = (yaml.safe_load((ROOT / "config" / "watchlist.yaml").read_text(encoding="utf-8")) or {}).get("companies") or []
+        companies = (yaml.safe_load((ROOT / "config" / "watchlist.yaml").read_text(encoding="utf-8-sig")) or {}).get("companies") or []
     except Exception:
         return
     if not companies:
@@ -351,7 +351,7 @@ def check_watchlist_live() -> None:
         req = urllib.request.Request(tpl.format(c.get("token", "")),
                                      headers={"User-Agent": "Mozilla/5.0"})
         try:
-            with urllib.request.urlopen(req, timeout=6) as r:
+            with urllib.request.urlopen(req, timeout=12) as r:   # 6s gave false "dead board" warnings
                 return str(c.get("name", "?")), 200 <= r.status < 300
         except Exception:
             return str(c.get("name", "?")), False

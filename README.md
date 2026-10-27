@@ -32,7 +32,7 @@ har portal ke baad Telegram pe audit report dete hain, recruiter mails/messages 
    python scripts/health_check.py        # 0 fail hona chahiye, warn padh lo
    python scripts/watcher.py             # queue/new_jobs.jsonl me jobs aani chahiye
    python scripts/probe_ats.py --check   # watchlist ke saare boards live hain?
-   python tools/verify_fixes.py          # 61-check regression suite (sab PASS hone chahiye)
+   python tools/verify_fixes.py          # 73-check regression suite (sab PASS hone chahiye)
    ```
 
 ## Naye laptop pe setup (GitHub ya zip se)
@@ -84,6 +84,7 @@ Ab fix hai (`opencode.json`):
   jati hai. Profile disk pe rehta hai, isliye logins/CAPTCHA session nahi jaate. 10 min isliye ki cycle ke beech me
   (resume tailor karte waqt) Chrome galti se band na ho; cycles ke beech ka gap 15-30 min hai, to Chrome phir bhi
   har cycle ke baad band ho jati hai. Form bharte waqt agar kabhi page reset dikhe to value badha do (`1800000` = 30 min).
+  Agent ko AGENTS.md me cycle ke end pe khud `browser_close` call karne ko bhi kaha gaya hai, to Chrome turant band hoti hai.
 - `codemode: false`: isse browser tools model ko directly milte hain. Iske bina `opencode run` me MCP tools model tak
   pahunchte hi nahi the aur agent chupchaap webfetch pe fall back ho jata tha.
 - `scripts/run_loop.py` har cycle start pe sirf **apne chat ke dead** Chrome/node processes reap karta hai (jinka

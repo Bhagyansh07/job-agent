@@ -271,8 +271,8 @@ if __name__ == "__main__":
     ap.add_argument("--out", required=True)
     ap.add_argument("--master", default=str(ROOT / "resume" / "master.json"))
     a = ap.parse_args()
-    master = json.loads(pathlib.Path(a.master).read_text(encoding="utf-8"))
-    tailored = json.loads(pathlib.Path(a.tailored).read_text(encoding="utf-8"))
+    master = json.loads(pathlib.Path(a.master).read_text(encoding="utf-8-sig"))
+    tailored = json.loads(pathlib.Path(a.tailored).read_text(encoding="utf-8-sig"))
     bad = guard(master, tailored)
     if bad:
         print("FABRICATION_GUARD_FAILED:\n" + "\n".join(bad))

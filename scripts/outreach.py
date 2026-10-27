@@ -17,7 +17,7 @@ COLS = ["date", "name", "title", "company", "url", "type", "status", "status_dat
 def rows():
     if not F.exists():
         return []
-    with F.open(encoding="utf-8", newline="") as f:
+    with F.open(encoding="utf-8-sig", newline="") as f:
         # older CSV without every column must not crash the outreach step
         return [{c: (r.get(c) or "") for c in COLS} for r in csv.DictReader(f)]
 

@@ -44,7 +44,7 @@ def load() -> list[dict]:
     if not F.exists():
         return []
     try:
-        with F.open(encoding="utf-8", newline="") as fh:
+        with F.open(encoding="utf-8-sig", newline="") as fh:
             return [{c: (r.get(c) or "") for c in COLS} for r in csv.DictReader(fh)]
     except Exception as exc:  # noqa: BLE001
         print(f"STORE_UNREADABLE: {type(exc).__name__}")
