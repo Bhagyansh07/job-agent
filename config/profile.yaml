@@ -29,8 +29,19 @@ roles_include:
   - node
   - mern
   - web developer
+  - full stack developer
   - python developer
   - java developer
+  - product engineer
+  - platform engineer
+  - cloud engineer
+  - data engineer
+  - security engineer
+  - qa engineer
+  - quality assurance
+  - sdet
+  - software development engineer in test
+  - devops
   - trainee engineer
   - graduate engineer
   - graduate trainee
@@ -59,6 +70,8 @@ roles_exclude_title:
   - business development
   - marketing
   - recruiter
+  - recruitment
+  - talent acquisition
   - hr 
   - hr-
   - human resource

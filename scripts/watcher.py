@@ -145,11 +145,12 @@ def main():
     # keep "SDE 2" and "Full-Stack Engineer" working while killing those false positives.
     inc_re = re.compile(r'\b(' + '|'.join(re.escape(x.strip()) for x in inc) + r')\b', re.I)
     exc_re = re.compile(r'\b(' + '|'.join(re.escape(x.strip()) for x in exc) + r')\b', re.I)
-    # Seniority level detection: SDE/SE 2+, Engineer III+
-    _lvl_re = re.compile(r'\b(?:sde|se|sr\.?|software engineer|engineer|level)\s*([ivx\d]+)\b', re.I)
+    # Seniority level detection: SDE 2+, SE 2+, Engineer III+, SDET II
+    _lvl_re = re.compile(r'\b(?:sde|sdet|se|sr\.?|software (?:development )?engineer(?: in test)?'
+                         r'|engineer|developer|level)\s*[-,]?\s*([ivx]+|\d)\b', re.I)
     _roman = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6}
     max_age = p["posting_age"]["stretch_max"]
-    fresh_max = p["posting_age"]["normal_max"]
+    active_after = p["posting_age"]["extended_max"]  # 8-14 days needs a still-active signal; 4-7 does not
     try:
         wl = cfg("watchlist.yaml").get("companies") or []
     except Exception as e:
@@ -221,9 +222,10 @@ def main():
                     if a is not None and a > max_age:
                         continue
                     upd = age_days(updated)
-                    # 4-14 day old postings need an "still active" signal: edited/relisted recently.
-                    # Without this the queue filled with dead 10-day-old posts that fail freshness anyway.
-                    if a is not None and a > fresh_max:
+                    # 8-14 day postings need a "still active" signal: edited/relisted recently.
+                    # 4-7 day postings pass here and are gated on match >= 80 in skills/job_matching.md.
+                    # (The old code used normal_max=3, which silently killed every 4-7 day job.)
+                    if a is not None and a > active_after:
                         if not listed:
                             skipped_stale += 1
                             continue

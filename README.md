@@ -34,21 +34,21 @@ har portal ke baad Telegram pe audit report dete hain, recruiter mails/messages 
    python tools/verify_fixes.py          # 51-check regression suite (sab PASS hone chahiye)
    ```
 
-## GitHub se fresh setup (doosre laptop pe)
-Ye repo private hai kyunki `resume/master.json`, `config/answers.yaml` aur tracker me personal data hai.
-Naye folder me:
-```
-git clone https://github.com/Bhagyansh07/job-agent.git
+## Naye laptop pe setup (GitHub ya zip se)
+Private repo: `https://github.com/Bhagyansh07/job-agent` (personal data hai isliye private).
+Backup/share ke liye zip: `job-agent-v5-FINAL.zip` (usme `.env`, `secrets/`, `browser-profiles/`, tracker rows, queue nahi hote).
+
+```powershell
+git clone https://github.com/Bhagyansh07/job-agent.git   # ya zip extract karo
 cd job-agent
 pip install -r requirements.txt
 copy .env.example .env        # phir .env me Telegram keys bharo
 ```
-`.env`, `secrets/`, `browser-profiles/`, `tracker/*.csv`, `queue/`, `output/` git me nahi jaate, isliye
+`.env`, `secrets/`, `browser-profiles/`, `tracker/*.csv`, `queue/`, `output/` repo aur zip dono me nahi aate, isliye
 naye laptop pe unhe dobara banana padega:
 - Telegram keys: README step 4.
 - Google (optional): README step 5. Iske bina Gmail OTP aur Sheet sync off rahenge, baaki sab chalega.
-- Resume PDF: `resume/` me daalo, phir `chats/00_first_run.md` chalao. Repo me `master.json` already hai,
-  isliye PDF ke bina bhi resume render hoga.
+- Resume PDF: `resume/` me daalo (master.json already bana hua hai, isliye PDF ke bina bhi render hoga).
 - Portals me login: pehli baar agent khud browser kholke rukega, tum login karo.
 Agar purani machine ka state chahiye (seen jobs, tracker rows) to `.env`, `secrets/`, `tracker/*.csv`,
 `queue/new_jobs.jsonl`, `state/seen_jobs.jsonl` alag se copy karo.

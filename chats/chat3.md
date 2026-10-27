@@ -1,7 +1,7 @@
 # CHAT 3 - Career pages (ATS), YC, remote boards, drives, discovery   (browser: pw_chat3)
 Start of cycle: follow the cycle protocol in AGENTS.md (read BLOCKED/LEARNINGS/RUN_LOG; at end append RUN_LOG).
 Runs 24x7 (these sources have weak bot-detection). The runner executes scripts/watcher.py before each cycle (every ~30 min).
-Playbooks: skills/portals/career_pages.md + career_pages_ats.md, yc_waas.md, remote_boards.md, internshala_unstop.md, unstop.md, hn_and_startup_sources.md + skills/discovery.md, apply_flow.md, job_matching.md, resume_tailoring.md
+Playbooks: skills/portals/career_pages.md + career_pages_ats.md, yc_waas.md, remote_boards.md, unstop.md, hn_and_startup_sources.md + skills/discovery.md, apply_flow.md, job_matching.md, resume_tailoring.md
 
 Remote/WFH jobs are always welcome - never skip a job just because it is work-from-home or fully remote.
 
