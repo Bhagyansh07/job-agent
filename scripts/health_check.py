@@ -344,7 +344,7 @@ def main() -> int:
         "fails": FAILS,
         "warns": WARNS,
         "oks": OKS,
-        "dry_run": os.environ.get("DRY_RUN", "0"),
+        "dry_run": os.environ.get("DRY_RUN", "1"),
     }
     try:
         HEALTH.parent.mkdir(parents=True, exist_ok=True)

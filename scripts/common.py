@@ -29,8 +29,12 @@ def cfg(name):
 
 
 def is_dry():
-    """One definition of DRY_RUN for every script (1/true/yes/on all work)."""
-    return os.environ.get("DRY_RUN", "0").strip().lower() in ("1", "true", "yes", "on")
+    """One definition of DRY_RUN for every script (1/true/yes/on all work).
+
+    Default is SAFE: if .env is missing or DRY_RUN is unset, this is a dry run.
+    A fresh clone must never start submitting because a key was forgotten.
+    """
+    return os.environ.get("DRY_RUN", "1").strip().lower() in ("1", "true", "yes", "on")
 
 
 def today():

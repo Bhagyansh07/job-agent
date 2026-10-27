@@ -16,7 +16,9 @@ roles_include:
   - sde
   - software engineer
   - software developer
+  - software development engineer
   - associate software engineer
+  - member of technical staff
   - backend
   - back end
   - back-end
@@ -31,7 +33,13 @@ roles_include:
   - java developer
   - trainee engineer
   - graduate engineer
+  - graduate trainee
+  - engineer trainee
+  - associate engineer
+  - junior
   - fresher
+  - intern
+  - internship
 
 roles_exclude_title:
   - senior
@@ -55,6 +63,7 @@ roles_exclude_title:
   - hr-
   - human resource
   - customer support
+  - customer success
   - data entry
   - qa manual
   - devops lead

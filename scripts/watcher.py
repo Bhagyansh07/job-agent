@@ -140,7 +140,10 @@ def main():
     p = cfg("profile.yaml")
     inc = [x.lower() for x in p["roles_include"]]
     exc = [x.lower() for x in p["roles_exclude_title"]]
-    # Word-boundary regex for exclude list (avoids "hr" matching "chrome"/"threading")
+    # Word-boundary regex for include and exclude. Substring matching queued
+    # "Internal Audit" for "intern" and "International Sales" for "intern"; boundaries
+    # keep "SDE 2" and "Full-Stack Engineer" working while killing those false positives.
+    inc_re = re.compile(r'\b(' + '|'.join(re.escape(x.strip()) for x in inc) + r')\b', re.I)
     exc_re = re.compile(r'\b(' + '|'.join(re.escape(x.strip()) for x in exc) + r')\b', re.I)
     # Seniority level detection: SDE/SE 2+, Engineer III+
     _lvl_re = re.compile(r'\b(?:sde|se|sr\.?|software engineer|engineer|level)\s*([ivx\d]+)\b', re.I)
@@ -192,8 +195,8 @@ def main():
                     seen_fh.write(json.dumps(key, ensure_ascii=False) + "\n")
                     seen_fh.flush()
                     tl = title.lower()
-                    # Include: substring match is fine (e.g. "sde 2" matches "sde")
-                    if not any(i in tl for i in inc):
+                    # Include: whole-word match ("intern" must not catch "internal")
+                    if not inc_re.search(tl):
                         continue
                     # Exclude: word boundary match (avoids "hr" in "chrome" / "threading")
                     if exc_re.search(tl):
