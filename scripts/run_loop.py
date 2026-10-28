@@ -167,6 +167,49 @@ def reap_orphans():
         print(f"[{chat}] orphan cleanup skipped: {e}")
 
 
+CDP_PORTS = {"chat1": 9222, "chat2": 9223, "chat3": 9224}
+
+
+def ensure_chrome() -> None:
+    """Start the chat's persistent Chrome if it is not running.
+
+    All logins live in that Chrome profile. Bhagyansh closes the window sometimes (and the
+    machine reboots), so the loop brings it back itself instead of failing the cycle with
+    "browser disconnected". Nothing is registered at Windows logon: Chrome only comes up when
+    the loop is actually running.
+    """
+    if not (ROOT / "state" / "CDP_MODE").exists():
+        return
+    port = CDP_PORTS.get(chat)
+    if not port:
+        return
+    import urllib.request
+    def alive() -> bool:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=3) as r:
+                return r.status == 200
+        except Exception:
+            return False
+    if alive():
+        return
+    script = ROOT / "start_chrome.ps1"
+    if not script.exists():
+        print(f"[{chat}] start_chrome.ps1 missing - browser tools will fail")
+        return
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                        "-File", str(script), "-Chats", chat],
+                       cwd=ROOT, timeout=120, capture_output=True, text=True)
+        for _ in range(10):
+            time.sleep(2)
+            if alive():
+                print(f"[{chat}] chrome was closed - restarted on port {port}")
+                return
+        print(f"[{chat}] chrome did not come up on port {port}")
+    except Exception as e:
+        print(f"[{chat}] could not start chrome: {e}")
+
+
 def clean_old_logs():
     if not log_dir.exists():
         return
@@ -255,6 +298,7 @@ while True:
             print("watcher failed:", e)
     run_health_check()
     reap_orphans()
+    ensure_chrome()
     now = dt.datetime.now(IST)
     # Model layer: the SAME primary model for every chat (Big Pickle), then cheap fallbacks.
     # Override without touching code: set JOB_AGENT_MODEL / JOB_AGENT_FALLBACKS in the environment.

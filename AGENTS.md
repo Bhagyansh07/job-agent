@@ -37,6 +37,11 @@ keyword instead of opening them.
 - state/learned_answers.json -> answers he gave on Telegram earlier (reuse them)
 
 ## Commands (run with the shell tool)
+
+**The shell is PowerShell on Windows.** `&&`, `tail`, `grep`, `touch`, `rm -f`, `export` do NOT work.
+Use `;` to chain, `Select-Object -Last 20` instead of `tail`, `Select-String` instead of `grep`,
+`New-Item -ItemType File` instead of `touch`. A failing shell line wastes a minute of every cycle.
+
 - The `grep` tool is disabled for security (it could read secrets). Use `read`/`glob` for files, or shell search only outside secrets/. Never search secrets/, .env or browser-profiles/.
 - python scripts/tracker.py check --portal <p> --chat chatN   # before EVERY application. exit 3 = limit reached, stop that portal
 - python scripts/tracker.py exists --url <url>        # skip duplicates
