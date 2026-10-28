@@ -32,5 +32,9 @@ def send(text):
 
 if __name__ == "__main__":
     msg = " ".join(sys.argv[1:]) or sys.stdin.read()
+    # The agent often passes one shell argument with "\n" inside. Telegram shows that
+    # literally, so a multi-line audit report arrives as one long line with backslash-n.
+    # Real newlines can never reach this point as the two characters "\" + "n", so converting is safe.
+    msg = msg.replace("\\r\\n", "\n").replace("\\n", "\n")
     send(msg)
     print("sent")

@@ -1,6 +1,9 @@
 # Naukri (portal key: naukri | cap 10/day | strict hours)
 
 Searches (sort by Date, freshness: last 1-3 days; experience 0-1; location Delhi NCR / Gurgaon / Noida / Jaipur / Remote):
+- Before opening jobs, check the result page: if the first 3 titles are not software / QA / full-stack / backend /
+  frontend / data-ish, change the keyword instead of opening them. Opening an XR, apprentice or analyst role wastes
+  a minute and it always ends as skipped.
 - "full stack developer fresher", "software engineer fresher", "react developer fresher", "node js developer fresher", "backend developer fresher", "sde 1"
 Notes:
 - Uses profile resume. Do not change the profile resume per job.

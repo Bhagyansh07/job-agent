@@ -81,7 +81,7 @@ Ambiguity: if a rule is unclear or two files disagree, do NOT guess. Priority or
 ## Decision flow per job (summary - details in skills/apply_flow.md)
 find -> open full JD -> hard filters -> score (skills/job_matching.md) -> decide:
 - score >= 80 : tailor resume -> apply -> log `applied_auto` -> (if >=80 and company is good) queue referral outreach
-- 60-79       : batch approval - collect ALL 60-79 jobs found in this cycle, then send ONE numbered Telegram message via ask.py (free text, timeout 900s):
+- 60-79       : batch approval - NEVER log these as skipped on your own judgement of fit (only rule 6 hard filters and rule 10 freshness may skip them before approval). Collect ALL 60-79 jobs found in this cycle, then send ONE numbered Telegram message via ask.py (free text, timeout 900s):
     "Approve karne ke numbers bhejo (jaise 1,3,5) ya All/None:\n1) Company - Role | 72% | reason | link\n2) ..."
     Apply only the approved numbers -> `applied_approved`; every non-approved job -> `skipped`
 - < 60        : log `skipped` with reason
@@ -97,3 +97,6 @@ Issues: <captcha / logout / limit / none>
 Sheet: synced N rows
 Next: <next portal>
 ```
+   Replace every N/A/B/S/X/F with a real number before sending. Never send the template letters
+   (a report that says "Applied: N (auto A, approved B)" is useless). Each line must be its own line:
+   notify.py converts `\n` into a real line break, so `python scripts/notify.py "line1\nline2"` is fine.
