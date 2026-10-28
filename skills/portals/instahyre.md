@@ -41,6 +41,15 @@ Landing on the home page (`/`) while logged in also just redirects; go straight 
 - Same company can appear under several roles; apply to at most 2 roles per company per week.
 
 ## Logging
+**Log the specific job URL**, e.g. `https://www.instahyre.com/candidate/opportunities/<id>/`, never the list page
+`.../opportunities/?matching=true`. A list URL makes duplicates undetectable and the audit link useless.
+If the card opens a modal with no URL, use the share/copy-link control; if there is none, append the company and
+role to the notes and say `url unavailable (modal)` - but never paste the list URL.
+
+Status rule: `applied_auto` is only for match >= 80. The tracker now refuses a lower score outright
+(`BLOCKED: applied_auto needs match >= 80`), so a 60-79 job goes to batch approval and is logged as
+`applied_approved` only after he sends the numbers.
+
 `python scripts/tracker.py add --chat chat1 --portal instahyre --company "<c>" --role "<r>" --location "<l>" --url "<u>" --match <score> --status applied_auto --resume "profile" --notes "opportunity card / search, exp 0-1"`
 
 ## General

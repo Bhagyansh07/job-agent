@@ -96,7 +96,32 @@ def sync_sheet(row):
             pass
 
 
+def auto_apply_min():
+    """Threshold from config/profile.yaml (match.auto_apply_min). 80 if it cannot be read."""
+    try:
+        mc = (cfg() or {}).get("match") or {}
+        return float(mc.get("auto_apply_min", 80))
+    except Exception:
+        return 80.0
+
+
 def add(d):
+    # Hard guard. The agent twice logged applied_auto below 80 (65 on Naukri, 75 on Instahyre)
+    # because the docs said "batch approval" and the model took the shortcut anyway. Code wins.
+    status = str(d.get("status") or "")
+    if status == "applied_auto":
+        try:
+            m = float(str(d.get("match") or 0))
+        except ValueError:
+            m = 0.0
+        floor = auto_apply_min()
+        if m < floor:
+            raise SystemExit(
+                f"BLOCKED: applied_auto needs match >= {floor:g}, got {m:g}. "
+                f"Send it in the 60-79 batch approval instead, then log --status applied_approved. "
+                f"Nothing was written.")
+    if status == "applied_auto" and not str(d.get("url") or "").startswith("http"):
+        raise SystemExit("BLOCKED: applied_auto needs the real job URL (--url), not an empty value.")
     F.parent.mkdir(exist_ok=True)
     new = not F.exists()
     row = {c: safe_cell(d.get(c, "") or "") for c in COLS}
