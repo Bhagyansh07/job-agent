@@ -62,17 +62,23 @@ check("opencode.json: codemode off (tools reach the model)",
       all(s.get("codemode") is False for s in srv.values()) if srv else False)
 check("opencode.json: idle-timeout on every server",
       all("--idle-timeout" in (s.get("command") or []) for s in srv.values()) if srv else False)
-check("opencode.json: idle-timeout 10 min",
-      all("600000" in [str(c) for c in (s.get("command") or [])] for s in srv.values()) if srv else False)
+check("opencode.json: idle-timeout set",
+      all(any(str(c) in ("600000", "3600000", "1800000") for c in (s.get("command") or []))
+          for s in srv.values()) if srv else False)
 check("opencode.json: npx -y (no install prompt on fresh clone)",
       all(all(x in [str(c) for c in (s.get("command") or [])] for x in ("npx", "-y")) for s in srv.values())
       if srv else False)
-pdirs = []
+pdirs, cdp = [], []
 for s in srv.values():
     cmd = [str(c) for c in (s.get("command") or [])]
     if "--user-data-dir" in cmd:
         pdirs.append(cmd[cmd.index("--user-data-dir") + 1].replace("\\", "/"))
-check("opencode.json: one profile per chat", len(pdirs) == 3 and len(set(pdirs)) == 3, ", ".join(pdirs))
+    if "--cdp-endpoint" in cmd:
+        cdp.append(cmd[cmd.index("--cdp-endpoint") + 1])
+# Either mode is valid: one profile dir per chat, or one persistent CDP Chrome per chat.
+check("opencode.json: one browser per chat",
+      (len(pdirs) == 3 and len(set(pdirs)) == 3) or (len(cdp) == 3 and len(set(cdp)) == 3),
+      "profiles: " + ", ".join(pdirs) + " | cdp: " + ", ".join(cdp))
 hc = (ROOT / "scripts" / "health_check.py").read_text(encoding="utf-8")
 check("health_check: validates mcp servers", "def check_mcp_servers" in hc and "codemode" in hc)
 

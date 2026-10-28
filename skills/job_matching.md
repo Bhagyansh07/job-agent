@@ -15,6 +15,20 @@ Open the FULL JD first. Extract: title, company, company type (product / startup
 - internship: skip if unpaid / no stipend
 - already in tracker (url or company+role)
 
+### Skipping honestly (read this before writing any `skipped` row)
+A skip must name the exact rule that fired, e.g. `hard filter: min experience 2+ yrs`,
+`hard filter: title not in roles_include`, `hard filter: bond > 12 months`.
+These are NOT skip reasons, no matter how the job feels:
+- college rank / NIRF / "top 100 institute only" - if the JD makes it a hard eligibility bar, note it as
+  `explicit eligibility: <what the JD says>`; a vague "preferred" is not a bar, so the job goes to 60-79 approval.
+- "internship", "consultant", "recruitment consultant" - internships WITH a stipend are in `include_types`;
+  judge them on the same 0-100 scale as everything else. A full-stack internship scored 58 is a 58, not a
+  policy skip.
+- "feels junior", "feels like an apprenticeship", "not core software engineer" - if the title matched
+  `roles_include`, score it and let the number decide. 60-79 goes to batch approval, never to `skipped`.
+If no hard filter fired and no rule applies, you are not allowed to invent one: score it, then apply (>=80)
+or batch it (60-79).
+
 ## Step 2 - Score
 | Part | Max | How |
 |---|---|---|

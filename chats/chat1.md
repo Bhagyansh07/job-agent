@@ -1,12 +1,14 @@
 # CHAT 1 - Indian job boards   (browser: pw_chat1)
-Portals in order: naukri(10) -> instahyre(10) -> foundit(10) -> hirist(10) -> apna(8) -> internshala(10)
+Portals in order: instahyre(10) -> hirist(10) -> foundit(10) -> apna(8) -> internshala(10) -> naukri(10)
+Naukri is LAST on purpose: it has the biggest volume but also the most recruiter spam, the most competition
+and the worst signal-to-noise in search results. Apply there only after the specialised boards are exhausted.
 Playbooks: skills/portals/naukri.md, instahyre.md, foundit.md, hirist.md, apna.md, internshala.md  + skills/apply_flow.md, job_matching.md, resume_tailoring.md
 
 Remote/WFH jobs are always welcome - never skip a job just because it is work-from-home or fully remote.
 
 ## Portal rotation (ONE portal per cycle)
 - Read the cursor from `state/chat1_cursor.txt` (a single integer; if the file is missing, start = 0).
-- Portal order by index: 0=naukri, 1=instahyre, 2=foundit, 3=hirist, 4=apna, 5=internshala.
+- Portal order by index: 0=instahyre, 1=hirist, 2=foundit, 3=apna, 4=internshala, 5=naukri.
 - Work ONLY the portal at the cursor this cycle. A portal may span multiple cycles.
 - Do NOT advance the cursor to the next portal until the current portal's per-portal cap is hit
   OR no fresh eligible jobs remain on it. Only then write ((cursor+1) % 6) back to `state/chat1_cursor.txt`.

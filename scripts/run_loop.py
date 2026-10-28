@@ -14,8 +14,11 @@ min_cycle = int(sys.argv[2]) if len(sys.argv) > 2 else (1800 if chat == "chat3" 
 MODEL_TIMEOUT = int(os.environ.get("OPENCODE_CYCLE_TIMEOUT", "1800"))
 # Every chat runs on the same model unless JOB_AGENT_MODEL says otherwise.
 PRIMARY_MODEL = os.environ.get("JOB_AGENT_MODEL", "opencode/big-pickle").strip() or "opencode/big-pickle"
+# Fallbacks are OFF by default on purpose. kilo/* and groq/* are dead accounts ("Your
+# authentication token is invalid" / "Invalid API Key"), so every real failure used to burn
+# two extra attempts and then blame quota. Set JOB_AGENT_FALLBACKS only for a verified model.
 FALLBACK_MODELS = [m.strip() for m in
-                   os.environ.get("JOB_AGENT_FALLBACKS", "kilo/laguna-s,kilo/flint").split(",")
+                   os.environ.get("JOB_AGENT_FALLBACKS", "").split(",")
                    if m.strip()]
 exe = shutil.which("opencode") or "opencode"
 idle_file = ROOT / "state" / f"{chat}_idle_until.txt"
@@ -59,6 +62,29 @@ def looks_failed(rc: int, content: str) -> bool:
     if rc != 0:
         return True
     return rate_limited(content)
+
+
+def stale_guard(name: str = ".last_fail_alert", hours: int = 6) -> bool:
+    """True when the last alert of this kind is older than `hours` (or never sent)."""
+    guard = ROOT / "state" / name
+    try:
+        return (not guard.exists()) or (time.time() - guard.stat().st_mtime > hours * 3600)
+    except OSError:
+        return True
+
+
+def network_down(content: str) -> bool:
+    """DNS / connectivity failure: getaddrinfo, ENOTFOUND, ECONNRESET, fetch failed."""
+    low = (content or "").lower()
+    return any(s in low for s in ("getaddrinfo", "enotfound", "eai_again", "econnreset",
+                                  "fetch failed", "network is unreachable", "socket hang up"))
+
+
+def auth_failed(content: str) -> bool:
+    """The OpenCode Console OAuth token died. Retrying other models cannot help:
+    they all authenticate through the same console, so this needs a fresh login."""
+    low = (content or "").lower()
+    return any(s in low for s in ("authentication token is invalid", "please sign in again"))
 
 
 def _run_model(model, prompt, logfile, timeout):
@@ -123,6 +149,11 @@ def reap_orphans():
     A killed/timed-out cycle can leave Chrome holding browser-profiles/<chat>, and the
     next launch then fails silently. Only processes with a dead parent are reaped."""
     if os.name != "nt":
+        return
+    # CDP mode (start_chrome.ps1): Chrome is long-lived and shared with Bhagyansh, so killing
+    # an "orphan" would log him out mid-session. The browser is no longer a child of the cycle.
+    if (ROOT / "state" / "CDP_MODE").exists():
+        print(f"[{chat}] orphan cleanup skipped (CDP chrome is persistent)")
         return
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-Command",
@@ -235,12 +266,18 @@ while True:
     clean_old_logs()
     logfile = log_dir / f"{chat}_{now.strftime('%Y%m%d_%H%M')}.log"
     success = False
+    auth_dead = False
     for idx, model in enumerate(chain):
         if success:
             break
         print(f"[{chat}] trying model: {model}")
+        # One log per model attempt. Opening the same file with "w" for every model used to
+        # erase the real reason the primary model failed (the only surviving log was the
+        # last fallback's "token is invalid"), which made the failures undiagnosable.
+        attempt_log = logfile if idx == 0 else logfile.with_name(
+            f"{logfile.stem}_try{idx + 1}_{model.replace('/', '-')}.log")
         try:
-            rc, content = _run_model(model, prompt, logfile, MODEL_TIMEOUT)
+            rc, content = _run_model(model, prompt, attempt_log, MODEL_TIMEOUT)
         except Exception as e:
             print(f"[{chat}] run failed with {model}: {e}")
             if idx < len(chain) - 1:
@@ -254,15 +291,45 @@ while True:
                 success = True
                 break
             # Retry same model once if rate-limited on first attempt
+            if network_down(content):
+                # getaddrinfo ENOTFOUND opencode.ai is a DNS/internet blip, not a dead model.
+                # Switching models cannot help; wait for the link to come back and retry.
+                for wait in (30, 60, 120):
+                    print(f"[{chat}] network/DNS down ({model}); retrying in {wait}s")
+                    time.sleep(wait)
+                    rc, content = _run_model(model, prompt,
+                                             logfile.with_name(f"{logfile.stem}_netretry.log"), MODEL_TIMEOUT)
+                    if not looks_failed(rc, content):
+                        success = True
+                        break
+                    if not network_down(content):
+                        break
+                if success:
+                    break
             if rate_limited(content) and idx == 0:
                 print(f"[{chat}] rate limit detected, retrying same model after 1.5s")
                 time.sleep(1.5)
-                rc, content = _run_model(model, prompt, logfile, MODEL_TIMEOUT)
+                rc, content = _run_model(model, prompt, logfile.with_name(f"{logfile.stem}_retry.log"), MODEL_TIMEOUT)
                 lines = content.splitlines() if content else []
                 print("\n".join(lines[-30:]))
                 if not looks_failed(rc, content):
                     success = True
                     break
+            if auth_failed(content):
+                # Every model in the chain uses the same console credential, so burning the
+                # remaining fallbacks just wastes the cycle. Stop and tell him exactly what to run.
+                print(f"[{chat}] OpenCode Console login expired (not a quota problem) - stopping the chain")
+                auth_dead = True
+                if stale_guard(".last_login_alert"):
+                    subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
+                                    f"{chat}: OpenCode Console login expired, so no model can run. "
+                                    f"Fix: open a terminal in the job-agent folder and run `opencode auth login` "
+                                    f"(account bhagyanshchandel3567@gmail.com), then start_all.ps1 again.",
+                                    "--key", "opencode_login", "--urgent", "--cooldown", "360"],
+                                   cwd=ROOT, timeout=60)
+                    (ROOT / "state" / ".last_login_alert").write_text(
+                        dt.datetime.now(IST).isoformat(timespec="seconds"), encoding="utf-8")
+                break
             if looks_failed(rc, content) and idx < len(chain) - 1:
                 print(f"[{chat}] switching to fallback: {chain[idx+1]} after 1.5s")
                 time.sleep(1.5)
@@ -273,7 +340,7 @@ while True:
                 time.sleep(1.5)
                 continue
             break
-    if not success:
+    if not success and not auth_dead:
         # one alert per 6h across all chats, so a dead gateway never goes unnoticed
         guard = ROOT / "state" / ".last_fail_alert"
         try:

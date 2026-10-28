@@ -102,6 +102,25 @@ def check_telegram() -> None:
         fail("telegram", f"cannot reach API: {type(exc).__name__} (token revoked or no internet)")
 
 
+def check_chrome() -> None:
+    """CDP Chrome is where every login lives. If the window is gone, cycles cannot apply anything."""
+    if not (ROOT / "state" / "CDP_MODE").exists():
+        return
+    import urllib.request
+    alive = []
+    for port in (9222, 9223, 9224):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=3) as r:
+                if r.status == 200:
+                    alive.append(port)
+        except Exception:
+            pass
+    if alive:
+        ok("chrome cdp", "listening on " + ", ".join(str(p) for p in alive))
+    else:
+        warn("chrome cdp", "no browser on 9222-9224 -> run: powershell -ExecutionPolicy Bypass -File .\\start_chrome.ps1")
+
+
 def check_google() -> None:
     cred = ROOT / "secrets" / "credentials.json"
     tok = ROOT / "secrets" / "token.json"
@@ -252,7 +271,7 @@ def check_mcp_servers() -> None:
         return
     ok("mcp servers", f"{len(servers)}: " + ", ".join(sorted(servers)))
 
-    no_idle, codemode_on, dirs, broken = [], [], {}, []
+    no_idle, codemode_on, dirs, cdp, broken = [], [], {}, {}, []
     for name, srv in sorted(servers.items()):
         cmd = srv.get("command") or []
         cmd = [str(c) for c in cmd]
@@ -267,6 +286,10 @@ def check_mcp_servers() -> None:
             i = cmd.index("--user-data-dir")
             if i + 1 < len(cmd):
                 dirs.setdefault(cmd[i + 1].replace("\\", "/"), []).append(name)
+        if "--cdp-endpoint" in cmd:
+            i = cmd.index("--cdp-endpoint")
+            if i + 1 < len(cmd):
+                cdp.setdefault(cmd[i + 1], []).append(name)
 
     if broken:
         fail("mcp command", "empty command for: " + ", ".join(broken))
@@ -283,9 +306,14 @@ def check_mcp_servers() -> None:
     shared = {d: names for d, names in dirs.items() if len(names) > 1}
     if shared:
         fail("mcp profiles", "same --user-data-dir for multiple chats: " + str(shared))
-    if len(dirs) != len(servers):
-        warn("mcp profiles", f"{len(dirs)} user-data-dir(s) for {len(servers)} servers")
-    elif not shared:
+    shared_cdp = {d: names for d, names in cdp.items() if len(names) > 1}
+    if shared_cdp:
+        fail("mcp cdp", "same --cdp-endpoint for multiple chats: " + str(shared_cdp))
+    elif cdp:
+        ok("mcp cdp", "persistent Chrome per chat (" + ", ".join(sorted(cdp)) + ")")
+    if len(dirs) + len(cdp) != len(servers):
+        warn("mcp profiles", f"{len(dirs)} user-data-dir(s) + {len(cdp)} cdp endpoint(s) for {len(servers)} servers")
+    elif not shared and dirs:
         ok("mcp profiles", "separate profile per chat (" + ", ".join(sorted(dirs)) + ")")
 
 
@@ -380,6 +408,7 @@ def main() -> int:
     check_env()
     check_telegram()
     check_google()
+    check_chrome()
     check_resume()
     check_configs()
     check_disk()

@@ -45,5 +45,8 @@ foreach ($chat in $wanted) {
     Write-Host "$chat started"
     Start-Sleep -Seconds 3
 }
+# One long-lived Chrome per chat, so logins survive every cycle (agent attaches over CDP).
+& powershell -ExecutionPolicy Bypass -File (Join-Path $root "start_chrome.ps1") -Chats $wanted
+
 Write-Host "done. running: $($wanted -join ', ')"
 Write-Host "pause switch: state\PAUSE (create) / remove to resume ; state\PAUSE_chat1 = one chat only"

@@ -1,12 +1,12 @@
 # CHAT 2 - LinkedIn + startup/global boards   (browser: pw_chat2)
-Portals in order: linkedin(10 applies + outreach) -> wellfound(10) -> cutshort(10) -> indeed(10) -> glassdoor(5, mostly find company + apply link)
+Portals in order: wellfound(10) -> linkedin(10 applies + outreach) -> cutshort(10) -> indeed(10) -> glassdoor(5, mostly find company + apply link)
 Playbooks: skills/portals/linkedin.md, wellfound.md, cutshort.md, indeed.md, glassdoor.md + skills/linkedin_outreach.md + skills/outreach/cold_email.md + skills/outreach/templates.md + apply_flow.md, job_matching.md, resume_tailoring.md
 
 Remote/WFH jobs are always welcome - never skip a job just because it is work-from-home or fully remote.
 
 ## Portal rotation (ONE portal per cycle)
 - Read the cursor from `state/chat2_cursor.txt` (single integer; missing file = start 0).
-- Order by index: 0=linkedin, 1=wellfound, 2=cutshort, 3=indeed, 4=glassdoor.
+- Order by index: 0=wellfound, 1=linkedin, 2=cutshort, 3=indeed, 4=glassdoor.
 - Work ONLY the portal at the cursor this cycle. A portal can span multiple cycles.
 - Do NOT advance the cursor to the next portal until the current portal's per-portal cap is hit
   OR no fresh eligible jobs remain on it. Only then write ((cursor+1) % 5) back to `state/chat2_cursor.txt`.

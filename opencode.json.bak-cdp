@@ -1,0 +1,310 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "kilo/laguna-s",
+  "permissions": [
+    {
+      "action": "*",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "read",
+      "resource": "*.env",
+      "effect": "deny"
+    },
+    {
+      "action": "read",
+      "resource": "*.env.*",
+      "effect": "deny"
+    },
+    {
+      "action": "read",
+      "resource": "secrets/*",
+      "effect": "deny"
+    },
+    {
+      "action": "read",
+      "resource": "browser-profiles/*",
+      "effect": "deny"
+    },
+    {
+      "action": "read",
+      "resource": "*.env.example",
+      "effect": "allow"
+    },
+    {
+      "action": "grep",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "glob",
+      "resource": "secrets/*",
+      "effect": "deny"
+    },
+    {
+      "action": "glob",
+      "resource": "*.env",
+      "effect": "deny"
+    },
+    {
+      "action": "glob",
+      "resource": "*.env.*",
+      "effect": "deny"
+    },
+    {
+      "action": "glob",
+      "resource": "browser-profiles/*",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "*.env",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "*.env.*",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "secrets/*",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "browser-profiles/*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*secrets*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*.env",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*.env.*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*browser-profiles*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "rm *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "del *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "rmdir *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "Remove-Item *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "erase *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "format *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "shutdown *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git push *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git reset --hard *",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "git clean *",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "config/profile.yaml",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "config/answers.yaml",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "config/cold_email.yaml",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "config/*.yaml",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "AGENTS.md",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "opencode.json",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "scripts/*",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "skills/*",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "chats/*",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "resume/master.json",
+      "effect": "deny"
+    },
+    {
+      "action": "read",
+      "resource": "state/tmp/_chrome_profile/*",
+      "effect": "deny"
+    },
+    {
+      "action": "glob",
+      "resource": "state/tmp/_chrome_profile/*",
+      "effect": "deny"
+    },
+    {
+      "action": "edit",
+      "resource": "state/tmp/_chrome_profile/*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*_chrome_profile*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*cold_email.yaml*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*opencode.json*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*AGENTS.md*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*config/profile.yaml*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*config\\profile.yaml*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*config/answers.yaml*",
+      "effect": "deny"
+    },
+    {
+      "action": "shell",
+      "resource": "*config\\answers.yaml*",
+      "effect": "deny"
+    },
+    {
+      "action": "webfetch",
+      "resource": "*",
+      "effect": "allow"
+    }
+  ],
+  "mcp": {
+    "servers": {
+      "pw_chat1": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "@playwright/mcp@0.0.83",
+          "--browser",
+          "chrome",
+          "--user-data-dir",
+          "C:/Users/bhagy/Downloads/job-agent/browser-profiles/chat1",
+          "--idle-timeout",
+          "3600000"
+        ],
+        "codemode": false
+      },
+      "pw_chat2": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "@playwright/mcp@0.0.83",
+          "--browser",
+          "chrome",
+          "--user-data-dir",
+          "C:/Users/bhagy/Downloads/job-agent/browser-profiles/chat2",
+          "--idle-timeout",
+          "3600000"
+        ],
+        "codemode": false
+      },
+      "pw_chat3": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "@playwright/mcp@0.0.83",
+          "--browser",
+          "chrome",
+          "--user-data-dir",
+          "C:/Users/bhagy/Downloads/job-agent/browser-profiles/chat3",
+          "--idle-timeout",
+          "3600000"
+        ],
+        "codemode": false
+      }
+    }
+  }
+}

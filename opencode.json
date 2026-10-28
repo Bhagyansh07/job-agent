@@ -266,12 +266,10 @@
           "npx",
           "-y",
           "@playwright/mcp@0.0.83",
-          "--browser",
-          "chrome",
-          "--user-data-dir",
-          "./browser-profiles/chat1",
+          "--cdp-endpoint",
+          "http://127.0.0.1:9222",
           "--idle-timeout",
-          "600000"
+          "3600000"
         ],
         "codemode": false
       },
@@ -281,12 +279,10 @@
           "npx",
           "-y",
           "@playwright/mcp@0.0.83",
-          "--browser",
-          "chrome",
-          "--user-data-dir",
-          "./browser-profiles/chat2",
+          "--cdp-endpoint",
+          "http://127.0.0.1:9223",
           "--idle-timeout",
-          "600000"
+          "3600000"
         ],
         "codemode": false
       },
@@ -296,12 +292,10 @@
           "npx",
           "-y",
           "@playwright/mcp@0.0.83",
-          "--browser",
-          "chrome",
-          "--user-data-dir",
-          "./browser-profiles/chat3",
+          "--cdp-endpoint",
+          "http://127.0.0.1:9224",
           "--idle-timeout",
-          "600000"
+          "3600000"
         ],
         "codemode": false
       }
