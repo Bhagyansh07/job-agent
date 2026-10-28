@@ -4,6 +4,15 @@ Instahyre is opportunity-based: companies send "opportunities" to matching profi
 also a normal job search. For a fresher the inbound opportunities are the valuable part because
 the company already decided the profile fits.
 
+## Logged-in check (do this first, it saves a whole cycle)
+`https://www.instahyre.com/candidate/onboard/` with a name in the tab title ("Bhagyansh Chandel - Instahyre")
+means he **is logged in** - it is the onboarding wizard, not a login wall. NEVER send a login alert for this URL.
+What to do instead:
+- If the wizard has a Skip / "I'll do it later" / close control, click it.
+- Otherwise navigate straight to `https://www.instahyre.com/candidate/opportunities/` (or `/jobs/`) and work from there.
+- Only if the URL is `login` / `signup`, or the page asks for a password, is a login alert correct.
+Landing on the home page (`/`) while logged in also just redirects; go straight to the opportunities URL.
+
 ## Two surfaces
 1. **Opportunities / "Jobs for you"** (the main surface)
    - For each card: open it, read the full JD, hard-filter + score per `skills/job_matching.md`.
@@ -36,3 +45,5 @@ the company already decided the profile fits.
 
 ## General
 UI changes often: take a fresh page snapshot, don't rely on fixed selectors. Follow skills/apply_flow.md.
+A click with an old snapshot ref fails with `Ref <id> not found in the current page snapshot` - that is not a
+login problem. Take a new snapshot and click again; do not escalate it to Telegram.
