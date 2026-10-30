@@ -31,11 +31,10 @@ Remote/WFH jobs are always welcome - never skip a job just because it is work-fr
    e. Stop the cycle after at most `max_applications_per_cycle` (8) applications, even if the portal has more.
       Aim for at least `min_applications_per_portal` (8) applications when that many fresh eligible jobs exist.
    f. Send AUDIT report on Telegram (include the `Sheet: synced N rows` line, N = rows in tracker/applications.csv).
-3. Cursor + idle:
-   - Per-portal cap hit OR no fresh eligible jobs left -> advance the cursor to ((cursor+1) % 6),
-     then write `state/chat1_idle_until.txt`.
+3. Cursor only (the runner owns pacing; do NOT write an idle file):
+   - Per-portal cap hit OR no fresh eligible jobs left -> advance the cursor to ((cursor+1) % 6).
    - Still more fresh eligible jobs but you hit the 8-application cycle cap -> keep the cursor on the SAME portal,
-     then write `state/chat1_idle_until.txt` so the next cycle continues this portal.
-   - Idle times (ISO format WITH offset, e.g. 2026-10-18T00:05:00+05:30):
-     cap reached for today -> tomorrow 00:05 IST; nothing new -> now + 45 minutes (e.g. 2026-10-17T21:45:00+05:30).
+     so the next cycle continues this portal.
+   - On 28 Oct the agent wrote a 45-minute idle file after a cycle that had just applied 3 jobs. Nothing reads
+     that file, so it only made the next cycle look stalled. Remove it if it exists; never create it.
 4. End the cycle with a 3-line status. (The runner starts the next cycle.)

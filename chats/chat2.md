@@ -49,11 +49,9 @@ Remote/WFH jobs are always welcome - never skip a job just because it is work-fr
       Aim for at least `min_applications_per_portal` (8) applications when that many fresh eligible jobs exist.
    f. Send AUDIT report on Telegram (applies + outreach counts + the `Sheet: synced N rows` line,
       N = rows in tracker/applications.csv).
-5. Cursor + idle:
-   - Per-portal cap hit OR no fresh eligible jobs left -> advance the cursor to ((cursor+1) % 5),
-     then write `state/chat2_idle_until.txt`.
+5. Cursor only (the runner owns pacing; do NOT write an idle file):
+   - Per-portal cap hit OR no fresh eligible jobs left -> advance the cursor to ((cursor+1) % 5).
    - Still more fresh eligible jobs but you hit the 8-application cycle cap -> keep the cursor on the SAME portal,
-     then write `state/chat2_idle_until.txt` so the next cycle continues this portal.
-   - Idle times (ISO format WITH +05:30 offset): cap for today -> tomorrow 00:05 IST = 2026-10-18T00:05:00+05:30;
-     nothing new -> now + 45 min (e.g. 2026-10-17T21:45:00+05:30).
+     so the next cycle continues this portal.
+   - Nothing reads chat2_idle_until.txt. Remove it if it exists; never create it.
 6. End the cycle with a 3-line status.

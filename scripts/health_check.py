@@ -108,7 +108,7 @@ def check_chrome() -> None:
         return
     import urllib.request
     alive = []
-    for port in (9222, 9223, 9224):
+    for port in (9332, 9333, 9334):
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=3) as r:
                 if r.status == 200:
@@ -118,7 +118,7 @@ def check_chrome() -> None:
     if alive:
         ok("chrome cdp", "listening on " + ", ".join(str(p) for p in alive))
     else:
-        warn("chrome cdp", "no browser on 9222-9224 -> run: powershell -ExecutionPolicy Bypass -File .\\start_chrome.ps1")
+        warn("chrome cdp", "no browser on 9332-9334 -> run: powershell -ExecutionPolicy Bypass -File .\\start_chrome.ps1")
 
 
 def check_google() -> None:

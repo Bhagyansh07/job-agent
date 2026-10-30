@@ -8,7 +8,7 @@ python scripts/tracker.py init-sheet                (writes header row in Google
 Statuses: applied_auto, applied_approved, skipped, needs_input, failed, saved
 DRY_RUN=1 in .env -> statuses get a dry_ prefix, nothing is applied, sheet sync skipped, dry_ rows don't count toward limits.
 """
-import argparse, csv, os, sys
+import argparse, csv, os, re, sys
 from collections import Counter
 from common import ROOT, today, now, cfg, FileLock, safe_cell, is_dry
 
@@ -122,6 +122,36 @@ def add(d):
                 f"Nothing was written.")
     if status == "applied_auto" and not str(d.get("url") or "").startswith("http"):
         raise SystemExit("BLOCKED: applied_auto needs the real job URL (--url), not an empty value.")
+    # A list page is not a job. On 28 Oct all three Instahyre rows pointed at
+    # /candidate/opportunities/?matching=true, so duplicates were undetectable and the audit
+    # link opened the same feed for every job.
+    LIST_URL_RE = re.compile(
+        r"instahyre\.com/candidate/opportunities/?(\?|$)"
+        r"|(?:linkedin\.com/jobs/search|naukri\.com/[a-z-]*jobs(?:-in)?(?:\?|$)"
+        r"|indeed\.[a-z.]+/jobs\?|wellfound\.com/(?:jobs|role)(?:\?|$)"
+        r"|cutshort\.io/jobs(?:\?|$)|hirist\.(?:tech|com)/jobs(?:\?|$))", re.I)
+    if status in ("applied_auto", "applied_approved", "applied", "saved") and LIST_URL_RE.search(str(d.get("url") or "")):
+        raise SystemExit(
+            "BLOCKED: that is a search/list URL, not the job. Open the job and log its real URL "
+            "(Instahyre: /candidate/opportunities/<id>/). Nothing was written.")
+    # 60-79 belongs to Bhagyansh. Skipping it on the model's own judgement is exactly what
+    # happened to eShopbox (78) on 28 Oct. Only hard filters may skip before approval, and
+    # those log match < 60 or use a hard-filter reason.
+    if status == "skipped":
+        try:
+            m = float(str(d.get("match") or 0))
+        except ValueError:
+            m = 0.0
+        floor = auto_apply_min()
+        hard = str(d.get("notes") or "").lower()
+        hard_markers = ("sales", "bpo", "telecall", "unpaid", "commission", "training fee",
+                        "bond", "deposit", "walk-in", "senior", "2+ years", "sensitive",
+                        "payment", "aadhaar", "pan card", "passport", "non-tech")
+        if floor > m >= 60 and not any(k in hard for k in hard_markers):
+            raise SystemExit(
+                f"BLOCKED: match {m:g} is in 60-79. It goes to batch approval, not skipped. "
+                f"Collect it, send the numbered list, log applied_approved or skipped only after "
+                f"his reply. Nothing was written.")
     F.parent.mkdir(exist_ok=True)
     new = not F.exists()
     row = {c: safe_cell(d.get(c, "") or "") for c in COLS}

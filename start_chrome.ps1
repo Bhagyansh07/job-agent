@@ -13,7 +13,10 @@ param(
 )
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ports = @{ chat1 = 9222; chat2 = 9223; chat3 = 9224 }
+# 9222 is Chrome's default debugging port, so other tools grab it first (Antigravity's browser
+# had it on 30 Oct). If that happens the MCP "attaches" to the wrong profile: every portal looks
+# logged out and applications go nowhere. 9332-9334 are ours alone.
+$ports = @{ chat1 = 9332; chat2 = 9333; chat3 = 9334 }
 
 $chrome = @(
     "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
@@ -47,6 +50,18 @@ foreach ($chat in $wanted) {
         Where-Object { $_.CommandLine -and $_.CommandLine -like "*$profile*" }
     if ($running) { Write-Host "$chat already open (port $port)"; continue }
 
+    $owner = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($owner) {
+        $ownerCmd = (Get-CimInstance Win32_Process -Filter "ProcessId=$($owner.OwningProcess)" -ErrorAction SilentlyContinue).CommandLine
+        Write-Host "PORT BLOCKED: $port is already used by another program."
+        Write-Host "  $ownerCmd"
+        Write-Host "  Not starting $chat. The agent would attach to that browser instead of $profile,"
+        Write-Host "  which makes every portal look logged out. Close that program or change the port."
+        $script:portBlocked = $true
+        continue
+    }
+
     $chromeArgs = @(
         "--user-data-dir=$profile",
         "--profile-directory=Default",
@@ -64,3 +79,4 @@ foreach ($chat in $wanted) {
 Write-Host ""
 Write-Host "Leave these windows open. The agent attaches to them over CDP and never closes them."
 Write-Host "Log in to any portal in these windows (not your normal Chrome) and it stays logged in."
+if ($script:portBlocked) { exit 1 }

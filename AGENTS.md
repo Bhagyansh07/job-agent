@@ -54,6 +54,7 @@ Correct sleep: `Start-Sleep -Seconds 30`. Correct last lines of a file: `Get-Con
 - python scripts/render_resume.py --tailored <json> --out <pdf>   # tailored ATS resume (has anti-fabrication guard)
 - python scripts/portal_account.py new --portal <name> --email <email>   # NEW career-page account only; stores password in secrets/ and prints it once
 - python scripts/gmail_reader.py otp --minutes 10 --sender <portal>   # read OTP from Gmail
+- python scripts/session_check.py --chat chatN --portal instahyre     # LOGGED_IN / LOGGED_OUT, exit 2 = logged out
 - python scripts/gmail_reader.py recent --hours 24 --notify          # recruiter mails -> Telegram
 - python scripts/outreach.py ...                      # LinkedIn outreach tracker
 - python scripts/cold_email.py apollo --role "software engineer" --limit 20   # find people (Apollo.io)
@@ -96,6 +97,15 @@ Correct sleep: `Start-Sleep -Seconds 30`. Correct last lines of a file: `Get-Con
     `python scripts/alert.py "<what is blocked> | <exact action he must take>" --key <short_topic> --urgent`
     Use `ask.py` when you need an answer and can wait (login/CAPTCHA/approval); use `alert.py` when he only needs to act or know. Then keep working other portals. One message per topic per 30 minutes (the script dedupes). If he has not replied after 30 minutes and the work is still blocked, send it again. Normal status updates use `alert.py` without `--urgent`. When the ask is handled, run `python scripts/alert.py --resolve <short_topic>`.
 
+22. **Check the session before the first Apply.** `python scripts/session_check.py --chat chatN --portal <p>`
+    must print `LOGGED_IN`. `LOGGED_OUT` means the tab is a login page: no Apply clicks, no `applied_*`
+    rows, ask for a login and work another portal. A silent logout is what turned 28 Oct into three
+    applications that were never submitted.
+23. **A click is not an application.** After clicking Apply, confirm it: the page/button changes to
+    Applied / "already applied", the job disappears from the feed, or a confirmation mail arrives.
+    If none of that is visible, log `needs_input` (or `failed`) with what you actually saw. Never log
+    `applied_auto` on hope - a false row also blocks duplicates for the same job forever.
+
 ## Cycle protocol (session start / end)
 START of every cycle (you have no memory of earlier cycles - the files are the memory):
 1. Read AGENTS.md, your chats/chatN.md, `state/BLOCKED.md`, `state/LEARNINGS.md` and the LAST 5 entries of `state/RUN_LOG.md`.
@@ -104,7 +114,7 @@ START of every cycle (you have no memory of earlier cycles - the files are the m
 4. Work ONE job at a time; max 1 portal per cycle and max 8 applications per cycle. Keep the cursor on the same portal until its per-portal cap is hit or no fresh eligible jobs remain (see your chat file). Plan in 2-3 lines -> do the smallest step -> verify -> log. No giant leaps.
 END of every cycle:
 5. **Leave the browser open.** Chrome is started once by `start_chrome.ps1` and you attach to it over CDP
-   (ports 9222/9223/9224). NEVER call `browser_close` and never kill Chrome: closing it is what used to wipe
+   (ports 9332/9333/9334). NEVER call `browser_close` and never kill Chrome: closing it is what used to wipe
    his logins every cycle. Just end the cycle; the tabs stay for the next one.
 6. Append one entry to `state/RUN_LOG.md`: date/time, chat, per-portal applied/skipped/failed counts, issues, what to do next.
 7. If you found a reliable trick or quirk of a portal (a filter, a button, a form pattern), append one line to `state/LEARNINGS.md` as `portal | trick`.

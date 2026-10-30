@@ -50,6 +50,14 @@ def fetch(svc, q, n=15):
 
 
 def main():
+    # PowerShell captures stdout as cp1252 by default, and one rupee sign in a subject line
+    # ("₹8,00,000 a year") killed `recent --hours 96` with UnicodeEncodeError. That is how
+    # application-confirmation checks silently failed on 30 Oct.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     o = sub.add_parser("otp")

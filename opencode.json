@@ -267,7 +267,7 @@
           "-y",
           "@playwright/mcp@0.0.83",
           "--cdp-endpoint",
-          "http://127.0.0.1:9222",
+          "http://127.0.0.1:9332",
           "--idle-timeout",
           "3600000"
         ],
@@ -280,7 +280,7 @@
           "-y",
           "@playwright/mcp@0.0.83",
           "--cdp-endpoint",
-          "http://127.0.0.1:9223",
+          "http://127.0.0.1:9333",
           "--idle-timeout",
           "3600000"
         ],
@@ -293,7 +293,7 @@
           "-y",
           "@playwright/mcp@0.0.83",
           "--cdp-endpoint",
-          "http://127.0.0.1:9224",
+          "http://127.0.0.1:9334",
           "--idle-timeout",
           "3600000"
         ],

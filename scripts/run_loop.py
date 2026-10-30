@@ -29,7 +29,10 @@ pw = f"pw_{chat}"
 # Removed "overloaded" - appears in backend JD content and causes false failures
 RATE_MARKERS = ("too many requests", "rate limit", "ratelimit", "freeusagelimiterror",
                 "sign up for free to continue", "quota exceeded", "insufficient credits",
-                "no available model", "model not found")
+                "no available model", "model not found",
+                # actual opencode message on 30 Oct; none of the markers above matched it,
+                # so the loop treated a dead quota as a normal failed cycle
+                "free usage limit", "usage limit reached", "subscribe to opencode go")
 # bare "429" is a job id as often as it is an HTTP status, so require context
 RATE_RE = re.compile(r"(?:status|code|error|http)[^\n]{0,16}\b429\b|\b429\b[^\n]{0,16}(?:too many|rate limit)")
 
@@ -167,7 +170,21 @@ def reap_orphans():
         print(f"[{chat}] orphan cleanup skipped: {e}")
 
 
-CDP_PORTS = {"chat1": 9222, "chat2": 9223, "chat3": 9224}
+CDP_PORTS = {"chat1": 9332, "chat2": 9333, "chat3": 9334}
+
+
+def _port_owner(port: int) -> str:
+    """Command line of the process listening on a port, or "" if unknown."""
+    try:
+        ps = ("$p = (Get-NetTCPConnection -LocalPort %d -State Listen -ErrorAction SilentlyContinue | "
+              "Select-Object -First 1).OwningProcess; if ($p) { "
+              "(Get-CimInstance Win32_Process -Filter \"ProcessId=$p\").CommandLine }" % port)
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=30)
+        return (r.stdout or "").strip()
+    except Exception:
+        return ""
 
 
 def ensure_chrome() -> None:
@@ -177,37 +194,90 @@ def ensure_chrome() -> None:
     machine reboots), so the loop brings it back itself instead of failing the cycle with
     "browser disconnected". Nothing is registered at Windows logon: Chrome only comes up when
     the loop is actually running.
+
+    A bare HTTP 200 on the port is not enough: on 30 Oct port 9222 belonged to a different
+    browser (Antigravity), the MCP attached to it, every portal looked logged out and the
+    "applications" went nowhere. The listener must be our profile.
     """
     if not (ROOT / "state" / "CDP_MODE").exists():
         return
     port = CDP_PORTS.get(chat)
     if not port:
         return
+    profile = str(ROOT / "browser-profiles" / chat).lower()
     import urllib.request
-    def alive() -> bool:
+
+    def http_ok() -> bool:
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=3) as r:
                 return r.status == 200
         except Exception:
             return False
-    if alive():
+
+    def ours() -> bool:
+        owner = _port_owner(port).lower()
+        if not owner:
+            return False            # cannot prove it is ours, so do not claim success
+        return profile in owner and "chrome.exe" in owner
+
+    if http_ok():
+        if ours():
+            return
+        msg = (f"[{chat}] port {port} is answering but it is NOT our profile "
+               f"({_port_owner(port)[:120]}). Browser tools would attach to the wrong browser.")
+        print(msg)
+        try:
+            subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
+                            f"{msg} | close that program or change the port in start_chrome.ps1",
+                            "--key", "wrong_browser", "--urgent"],
+                           cwd=ROOT, timeout=60, capture_output=True)
+        except Exception:
+            pass
         return
     script = ROOT / "start_chrome.ps1"
     if not script.exists():
         print(f"[{chat}] start_chrome.ps1 missing - browser tools will fail")
         return
     try:
-        subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                        "-File", str(script), "-Chats", chat],
-                       cwd=ROOT, timeout=120, capture_output=True, text=True)
+        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                            "-File", str(script), "-Chats", chat],
+                           cwd=ROOT, timeout=120, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
         for _ in range(10):
             time.sleep(2)
-            if alive():
+            if http_ok() and ours():
                 print(f"[{chat}] chrome was closed - restarted on port {port}")
                 return
-        print(f"[{chat}] chrome did not come up on port {port}")
+        print(f"[{chat}] chrome did not come up on port {port}: "
+              f"{(r.stdout or '').strip()[-300:]}")
     except Exception as e:
         print(f"[{chat}] could not start chrome: {e}")
+
+
+def check_sessions() -> None:
+    """Warn (once per 6h) if the Gmail session in the chat's browser is gone.
+
+    A logged-out profile makes OTP reading, confirmation checks and every portal apply fail,
+    and on 28 Oct it produced three fake "applied" rows instead. The agent still runs: it can
+    do read-only research and ask for a login, but Bhagyansh should know before the cycle.
+    """
+    try:
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "session_check.py"),
+                            "--chat", chat, "--portal", "google"],
+                           cwd=ROOT, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=90)
+        out = (r.stdout or "").strip()
+        if out:
+            print(out)
+        if r.returncode == 2:
+            subprocess.run([sys.executable, str(ROOT / "scripts" / "alert.py"),
+                            "Gmail session in the agent Chrome is LOGGED_OUT | run "
+                            f"powershell -ExecutionPolicy Bypass -File .\\login_browser.ps1 -Chat {chat} "
+                            "and sign in there (normal Chrome does not help)",
+                            "--key", "gmail_session", "--cooldown", "360", "--urgent"],
+                           cwd=ROOT, timeout=60, capture_output=True)
+    except Exception as e:
+        print(f"[{chat}] session check skipped: {e}")
 
 
 def clean_old_logs():
@@ -299,6 +369,7 @@ while True:
     run_health_check()
     reap_orphans()
     ensure_chrome()
+    check_sessions()
     now = dt.datetime.now(IST)
     # Model layer: the SAME primary model for every chat (Big Pickle), then cheap fallbacks.
     # Override without touching code: set JOB_AGENT_MODEL / JOB_AGENT_FALLBACKS in the environment.
