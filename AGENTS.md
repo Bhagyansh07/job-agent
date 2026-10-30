@@ -55,6 +55,7 @@ Correct sleep: `Start-Sleep -Seconds 30`. Correct last lines of a file: `Get-Con
 - python scripts/portal_account.py new --portal <name> --email <email>   # NEW career-page account only; stores password in secrets/ and prints it once
 - python scripts/gmail_reader.py otp --minutes 10 --sender <portal>   # read OTP from Gmail
 - python scripts/session_check.py --chat chatN --portal instahyre     # LOGGED_IN / LOGGED_OUT, exit 2 = logged out
+- python scripts/preflight.py --chat chatN                            # can the agent run right now? 8 checks, no guessing
 - python scripts/gmail_reader.py recent --hours 24 --notify          # recruiter mails -> Telegram
 - python scripts/outreach.py ...                      # LinkedIn outreach tracker
 - python scripts/cold_email.py apollo --role "software engineer" --limit 20   # find people (Apollo.io)

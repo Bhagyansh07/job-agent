@@ -3,9 +3,11 @@
 #   powershell -ExecutionPolicy Bypass -File .\start_all.ps1                  # all three
 #   powershell -ExecutionPolicy Bypass -File .\start_all.ps1 -Chats chat1     # only chat1
 #   powershell -ExecutionPolicy Bypass -File .\start_all.ps1 -Chats chat1,chat2
+#   powershell -ExecutionPolicy Bypass -File .\start_all.ps1 -Chats chat1 -CheckModel   # also spend 1 call to test big-pickle
 # Fewer chats = fewer Chrome windows + less CPU. One chat is perfectly usable.
 param(
-    [string[]]$Chats = @("chat1", "chat2", "chat3")
+    [string[]]$Chats = @("chat1", "chat2", "chat3"),
+    [switch]$CheckModel
 )
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
@@ -25,6 +27,28 @@ foreach ($c in $Chats) {
 }
 if (-not $wanted) { Write-Host "no chats selected"; exit 1 }
 
+# 1. Chrome first: the loop attaches to it over CDP, so it must exist before any cycle.
+& powershell -ExecutionPolicy Bypass -File (Join-Path $root "start_chrome.ps1") -Chats $wanted
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "Chrome could not start (port taken by another program). Not starting the loops."
+    exit 1
+}
+
+# 2. Preflight: a wrong browser, a logged-out profile or a used-up limit wastes a whole cycle.
+#    The model probe is optional because it costs one call.
+if ($CheckModel) {
+    python scripts/preflight.py --chat $wanted[0]
+} else {
+    python scripts/preflight.py --chat $wanted[0] --no-model
+}
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "Preflight blocked. Fix the FAIL lines above, then run this command again."
+    exit 1
+}
+
+# 3. Launch one loop per chat.
 $procs = @()
 try {
     $procs = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
@@ -45,8 +69,6 @@ foreach ($chat in $wanted) {
     Write-Host "$chat started"
     Start-Sleep -Seconds 3
 }
-# One long-lived Chrome per chat, so logins survive every cycle (agent attaches over CDP).
-& powershell -ExecutionPolicy Bypass -File (Join-Path $root "start_chrome.ps1") -Chats $wanted
 
 Write-Host "done. running: $($wanted -join ', ')"
 Write-Host "pause switch: state\PAUSE (create) / remove to resume ; state\PAUSE_chat1 = one chat only"
